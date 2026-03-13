@@ -69,6 +69,12 @@ go test ./internal/service/...
 
 # カバレッジ確認
 go test -cover ./...
+
+# ビルド（成果物は cmd/app/app に固定）
+go build -o cmd/app/app ./cmd/app/
+
+# サーバ起動
+./cmd/app/app
 ```
 
 ---
