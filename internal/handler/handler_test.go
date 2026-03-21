@@ -10,6 +10,10 @@ import (
 	"habit-game/internal/handler"
 )
 
+func TestFailCI(t *testing.T) {
+	t.Fatal("intentional failure to verify CI")
+}
+
 func TestGetDashboard(t *testing.T) {
 	tmpl := template.Must(template.New("index").Parse(`<h1>Habit Growth Tracker</h1>`))
 	h := handler.New(tmpl)
