@@ -1,0 +1,13 @@
+.git
+.gitignore
+.github
+docs
+cmd/app/app
+Dockerfile
+docker-compose.yml
+.dockerignore
+CLAUDE.md
+.claude
+.DS_Store
+*.swp
+*.swo

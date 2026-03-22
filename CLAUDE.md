@@ -18,6 +18,7 @@
 - **DB**: SQLite
 - **DB アクセス**: `database/sql`
 - **フロントエンド**: HTML / CSS（JavaScript は最小限）
+- **コンテナ**: Docker（マルチステージビルド、CGO 対応）
 
 ---
 
@@ -35,6 +36,9 @@ habit-game/
 ├── templates/         # HTML テンプレート
 ├── static/css/        # スタイルシート
 ├── migrations/        # SQL マイグレーションファイル
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
 ├── go.mod
 └── docs/specification.md
 ```
@@ -70,11 +74,14 @@ go test ./internal/service/...
 # カバレッジ確認
 go test -cover ./...
 
-# ビルド（成果物は cmd/app/app に固定）
-go build -o cmd/app/app ./cmd/app/
+# サーバ起動（Docker Compose）
+docker compose up
 
-# サーバ起動
-./cmd/app/app
+# バックグラウンド起動
+docker compose up -d
+
+# 停止
+docker compose down
 ```
 
 ---

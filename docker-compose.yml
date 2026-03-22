@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    ports:
+      - "8080:8080"
+    volumes:
+      - habit_db:/data
+    environment:
+      - DB_PATH=/data/habit.db
+    restart: unless-stopped
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    working_dir: /src
+    volumes:
+      - .:/src
+    environment:
+      - DB_PATH=/data/habit.db
+    profiles:
+      - dev
+
+volumes:
+  habit_db:
+    driver: local
