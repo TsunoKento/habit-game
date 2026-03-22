@@ -20,6 +20,7 @@ services:
     working_dir: /src
     volumes:
       - .:/src
+      - ./data:/data
     environment:
       - DATABASE_DSN=/data/habit.db
     profiles:

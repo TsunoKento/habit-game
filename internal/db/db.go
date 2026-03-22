@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"sort"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -20,6 +21,12 @@ func Open(dsn string, fsys fs.FS) (*sql.DB, error) {
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("db.Open ping: %w", err)
+	}
+
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db.Open enable foreign keys: %w", err)
 	}
 
 	if err := migrate(db, fsys); err != nil {
@@ -47,7 +54,7 @@ func migrate(db *sql.DB, fsys fs.FS) error {
 
 	var files []string
 	for _, e := range entries {
-		if !e.IsDir() {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".sql") {
 			files = append(files, e.Name())
 		}
 	}
@@ -67,12 +74,23 @@ func migrate(db *sql.DB, fsys fs.FS) error {
 			return fmt.Errorf("read migration %s: %w", name, err)
 		}
 
-		if _, err := db.Exec(string(data)); err != nil {
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("begin transaction for migration %s: %w", name, err)
+		}
+
+		if _, err := tx.Exec(string(data)); err != nil {
+			tx.Rollback()
 			return fmt.Errorf("apply migration %s: %w", name, err)
 		}
 
-		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES (?)`, name); err != nil {
+		if _, err := tx.Exec(`INSERT INTO schema_migrations (filename) VALUES (?)`, name); err != nil {
+			tx.Rollback()
 			return fmt.Errorf("record migration %s: %w", name, err)
+		}
+
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit migration %s: %w", name, err)
 		}
 	}
 

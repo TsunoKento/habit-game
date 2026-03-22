@@ -18,7 +18,7 @@ func TestOpen_CreatesTablesFromMigrations(t *testing.T) {
 			);
 			CREATE TABLE IF NOT EXISTS daily_records (
 				id       INTEGER PRIMARY KEY AUTOINCREMENT,
-				habit_id INTEGER NOT NULL REFERENCES habits(id),
+				habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
 				date     DATE NOT NULL,
 				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(habit_id, date)
@@ -42,19 +42,22 @@ func TestOpen_CreatesTablesFromMigrations(t *testing.T) {
 }
 
 func TestOpen_SkipsAlreadyAppliedMigrations(t *testing.T) {
-	migrations := fstest.MapFS{
+	const dsn = "file:testskip?mode=memory&cache=shared"
+
+	migrations1 := fstest.MapFS{
 		"001_create.sql": {
 			Data: []byte(`CREATE TABLE IF NOT EXISTS habits (id INTEGER PRIMARY KEY, name TEXT NOT NULL);`),
 		},
 	}
 
-	conn, err := db.Open(":memory:", migrations)
+	conn, err := db.Open(dsn, migrations1)
 	if err != nil {
 		t.Fatalf("first Open: %v", err)
 	}
 	defer conn.Close()
 
-	// Apply migrations a second time via migrate — should not fail due to IF NOT EXISTS
+	// Apply migrations a second time on the same shared in-memory DB.
+	// 001_create.sql should be skipped; only 002_noop.sql should be applied.
 	migrations2 := fstest.MapFS{
 		"001_create.sql": {
 			Data: []byte(`CREATE TABLE IF NOT EXISTS habits (id INTEGER PRIMARY KEY, name TEXT NOT NULL);`),
@@ -64,7 +67,7 @@ func TestOpen_SkipsAlreadyAppliedMigrations(t *testing.T) {
 		},
 	}
 
-	conn2, err := db.Open(":memory:", migrations2)
+	conn2, err := db.Open(dsn, migrations2)
 	if err != nil {
 		t.Fatalf("second Open: %v", err)
 	}
@@ -79,10 +82,7 @@ func TestOpen_SkipsAlreadyAppliedMigrations(t *testing.T) {
 	}
 }
 
-func TestOpen_InvalidDSN(t *testing.T) {
-	// Attempting to open a directory as a database should fail at ping/use time
-	// We use an in-memory DB for all normal tests; just verify error propagation
-	// by passing a bad driver name indirectly — instead, ensure Close is safe on error.
+func TestOpen_CloseIsIdempotent(t *testing.T) {
 	conn, err := db.Open(":memory:", fstest.MapFS{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
