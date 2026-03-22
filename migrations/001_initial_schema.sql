@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS habits (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL,
+    exp_per_done INTEGER NOT NULL,
+    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS daily_records (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    habit_id INTEGER  NOT NULL REFERENCES habits(id),
+    date     DATE     NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(habit_id, date)
+);
