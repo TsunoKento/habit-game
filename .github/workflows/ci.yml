@@ -14,10 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
       - name: Build
-        run: go build ./...
+        run: docker build -t habit-game .
       - name: Test
-        run: go test ./...
+        run: docker compose run --rm dev go test ./...
