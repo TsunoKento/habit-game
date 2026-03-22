@@ -7,9 +7,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - habit_db:/data
+      - ./data:/data
     environment:
-      - DB_PATH=/data/habit.db
+      - DATABASE_DSN=/data/habit.db
     restart: unless-stopped
 
   dev:
@@ -20,11 +20,8 @@ services:
     working_dir: /src
     volumes:
       - .:/src
+      - ./data:/data
     environment:
-      - DB_PATH=/data/habit.db
+      - DATABASE_DSN=/data/habit.db
     profiles:
       - dev
-
-volumes:
-  habit_db:
-    driver: local
