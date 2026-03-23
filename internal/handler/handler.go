@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"html/template"
 	"log"
 	"net/http"
@@ -49,8 +50,11 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			{Name: "運動", Done: false, Level: 2, TotalExp: 70, Streak: 0},
 		},
 	}
-	if err := h.tmpl.Execute(w, data); err != nil {
+	var buf bytes.Buffer
+	if err := h.tmpl.Execute(&buf, data); err != nil {
 		log.Printf("template render error: %v", err)
 		http.Error(w, "render error", http.StatusInternalServerError)
+		return
 	}
+	buf.WriteTo(w)
 }
