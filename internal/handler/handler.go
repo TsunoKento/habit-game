@@ -13,9 +13,21 @@ type Handler struct {
 	tmpl *template.Template
 }
 
-var weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
+var (
+	jst      = mustLoadLocation("Asia/Tokyo")
+	weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
+)
+
+func mustLoadLocation(name string) *time.Location {
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}
 
 func formatDate(t time.Time) string {
+	t = t.In(jst)
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
