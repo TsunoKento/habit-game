@@ -2,10 +2,132 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Habit Growth Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      color: #111;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 24px 16px 16px;
+      border-bottom: 1px solid #e5e5e5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    header .date {
+      margin-top: 2px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    .summary {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    main {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+    }
+
+    .habit-list {
+      list-style: none;
+    }
+
+    .habit-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .habit-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .habit-name {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .habit-name.done {
+      color: #9ca3af;
+    }
+
+    .habit-meta {
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+
+    .check-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+
+    .check-btn:not(:disabled) {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .check-btn:not(:disabled):hover {
+      background: #1d4ed8;
+    }
+
+    .check-btn:not(:disabled):focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+
+    .check-btn:disabled {
+      background: transparent;
+      color: #9ca3af;
+      cursor: default;
+    }
+  </style>
 </head>
 <body>
-  <h1>Habit Growth Tracker</h1>
-  <p>ダッシュボード（仮）</p>
+  <header>
+    <h1>Habit Growth Tracker</h1>
+    <p class="date">{{.Today}}</p>
+    <p class="summary">総合 Lv.{{.TotalLevel}} &nbsp;/&nbsp; {{.TotalExp}} EXP</p>
+  </header>
+
+  <main>
+    <ul class="habit-list">
+      {{range .Habits}}
+      <li class="habit-item">
+        <div class="habit-info">
+          <span class="habit-name{{if .Done}} done{{end}}">{{.Name}}</span>
+          <span class="habit-meta">Lv.{{.Level}} &nbsp;·&nbsp; {{.TotalExp}} EXP &nbsp;·&nbsp; {{.Streak}}日連続</span>
+        </div>
+        <button class="check-btn" {{if .Done}}disabled{{end}}>
+          {{if .Done}}達成済み{{else}}達成する{{end}}
+        </button>
+      </li>
+      {{end}}
+    </ul>
+  </main>
 </body>
 </html>
