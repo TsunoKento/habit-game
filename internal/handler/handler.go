@@ -13,6 +13,12 @@ type Handler struct {
 	tmpl *template.Template
 }
 
+var weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
+
+func formatDate(t time.Time) string {
+	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
+}
+
 func New(tmpl *template.Template) http.Handler {
 	h := &Handler{tmpl: tmpl}
 	mux := http.NewServeMux()
@@ -22,7 +28,7 @@ func New(tmpl *template.Template) http.Handler {
 
 func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	data := model.DashboardData{
-		Today:      time.Now().Format("2006年01月02日"),
+		Today:      formatDate(time.Now()),
 		TotalLevel: 7,
 		TotalExp:   210,
 		Habits: []model.HabitCard{
