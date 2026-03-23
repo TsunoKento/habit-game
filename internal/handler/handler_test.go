@@ -41,7 +41,7 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", w.Result().StatusCode)
 	}
 	body := w.Body.String()
-	for _, want := range []string{"早起き", "英語学習", "運動"} {
+	for _, want := range []string{"早起き", "英語学習", "運動", "達成済み", "disabled", "達成する"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("body does not contain %q", want)
 		}
