@@ -13,7 +13,12 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux \
     go build -ldflags="-s -w" -o /out/app ./cmd/app/
 
-# ── Stage 2: Runtime ────────────────────────────────────
+# ── Stage 2: Dev (hot-reload) ───────────────────────────
+FROM builder AS dev
+RUN go install github.com/air-verse/air@latest
+CMD ["air"]
+
+# ── Stage 3: Runtime ────────────────────────────────────
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update \

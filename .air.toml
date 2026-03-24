@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "CGO_ENABLED=1 go build -o ./tmp/app ./cmd/app/"
+  bin = "./tmp/app"
+  include_ext = ["go", "html", "css"]
+  exclude_dir = ["tmp", "data", ".git"]
+  delay = 500
+
+[log]
+  time = true
