@@ -15,7 +15,8 @@ RUN CGO_ENABLED=1 GOOS=linux \
 
 # ── Stage 2: Dev (hot-reload) ───────────────────────────
 FROM builder AS dev
-RUN go install github.com/air-verse/air@latest
+ARG AIR_VERSION=v1.64.5
+RUN go install github.com/air-verse/air@${AIR_VERSION}
 CMD ["air"]
 
 # ── Stage 3: Runtime ────────────────────────────────────
