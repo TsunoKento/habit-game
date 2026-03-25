@@ -79,7 +79,6 @@
     .check-btn {
       flex-shrink: 0;
       padding: 6px 14px;
-      border-radius: 6px;
       font-size: 0.75rem;
       font-weight: 700;
       cursor: pointer;
@@ -122,9 +121,11 @@
           <span class="habit-name{{if .Done}} done{{end}}">{{.Name}}</span>
           <span class="habit-meta">Lv.{{.Level}} &nbsp;·&nbsp; {{.TotalExp}} EXP &nbsp;·&nbsp; {{.Streak}}日連続</span>
         </div>
-        <button class="check-btn" {{if .Done}}disabled{{end}}>
-          {{if .Done}}達成済み{{else}}達成する{{end}}
-        </button>
+        <form method="post" action="/habits/{{.ID}}/done">
+          <button class="check-btn" {{if .Done}}disabled{{end}}>
+            {{if .Done}}達成済み{{else}}達成する{{end}}
+          </button>
+        </form>
       </li>
       {{end}}
     </ul>

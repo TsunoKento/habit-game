@@ -8,6 +8,8 @@ import (
 
 	"habit-game/internal/db"
 	"habit-game/internal/handler"
+	"habit-game/internal/repository"
+	"habit-game/internal/service"
 	"habit-game/migrations"
 	"habit-game/templates"
 )
@@ -26,7 +28,10 @@ func main() {
 
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 
-	h := handler.New(tmpl)
+	dailyRecordRepo := repository.NewDailyRecord(conn)
+	habitDoneService := service.NewHabitDone(dailyRecordRepo, nil)
+
+	h := handler.NewWithDependencies(tmpl, habitDoneService)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)
