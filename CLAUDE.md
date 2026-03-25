@@ -131,6 +131,38 @@ docker compose down
 
 ---
 
+## 並列作業（複数 worktree）
+
+複数の issue を同時に進める場合は git worktree を使い、worktree ごとに異なるポートで Docker を起動する。
+
+### ポート番号のルール
+
+`APP_PORT = 8000 + issue番号` とする。
+
+| issue 番号 | APP_PORT |
+|---|---|
+| 18 | 8018 |
+| 19 | 8019 |
+| 42 | 8042 |
+
+### セットアップ手順
+
+```bash
+# 1. worktree を作成
+git worktree add ../habit-game-issue-{N} -b issue-{N}-{slug}
+
+# 2. worktree に移動して .env を作成（issue 番号から自動決定）
+cd ../habit-game-issue-{N}
+echo "APP_PORT=80{NN}" > .env
+
+# 3. 起動
+docker compose up -d
+```
+
+`.env` は `.gitignore` 済みのためコミットされない。
+
+---
+
 ## 仕様参照
 
 | 内容 | ファイル |
