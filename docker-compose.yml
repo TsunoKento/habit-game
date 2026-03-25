@@ -25,3 +25,19 @@ services:
       - DATABASE_DSN=/data/habit.db
     profiles:
       - dev
+
+  watch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    working_dir: /src
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/src
+      - ./data:/data
+    environment:
+      - DATABASE_DSN=/data/habit.db
+    profiles:
+      - dev

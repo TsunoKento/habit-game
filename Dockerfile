@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── Stage 1: Build ──────────────────────────────────────
-FROM golang:1.22 AS builder
+FROM golang:1.26.1 AS builder
 
 WORKDIR /src
 
@@ -13,7 +13,13 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux \
     go build -ldflags="-s -w" -o /out/app ./cmd/app/
 
-# ── Stage 2: Runtime ────────────────────────────────────
+# ── Stage 2: Dev (hot-reload) ───────────────────────────
+FROM builder AS dev
+ARG AIR_VERSION=v1.64.5
+RUN go install github.com/air-verse/air@${AIR_VERSION}
+CMD ["air"]
+
+# ── Stage 3: Runtime ────────────────────────────────────
 FROM debian:bookworm-slim AS runtime
 
 RUN apt-get update \
