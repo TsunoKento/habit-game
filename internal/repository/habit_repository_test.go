@@ -73,6 +73,10 @@ func TestSQLiteHabitRepository_FindAll_OrdersByID(t *testing.T) {
 		t.Fatalf("FindAll: %v", err)
 	}
 
+	if len(habits) < 3 {
+		t.Fatalf("expected at least 3 habits, got %d", len(habits))
+	}
+
 	if habits[0].ID != 1 || habits[1].ID != 2 || habits[2].ID != 3 {
 		t.Fatalf("unexpected order: %#v", habits)
 	}
