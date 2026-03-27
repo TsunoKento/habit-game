@@ -2,6 +2,7 @@ package handler_test
 
 import (
 	"context"
+	"errors"
 	"html/template"
 	"net/http"
 	"net/http/httptest"
@@ -64,5 +65,23 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("body does not contain %q", want)
 		}
+	}
+}
+
+func TestGetDashboard_Returns500WhenServiceFails(t *testing.T) {
+	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	svc := &mockHabitService{err: errors.New("db down")}
+	h := handler.New(tmpl, svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "internal server error") {
+		t.Fatalf("unexpected body: %q", w.Body.String())
 	}
 }
