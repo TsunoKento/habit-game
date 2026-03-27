@@ -48,13 +48,17 @@ func TestHabitService_FindAll(t *testing.T) {
 }
 
 func TestHabitService_FindAll_ReturnsWrappedError(t *testing.T) {
-	repo := &stubHabitRepository{err: errors.New("boom")}
+	rootErr := errors.New("boom")
+	repo := &stubHabitRepository{err: rootErr}
 
 	svc := service.NewHabitService(repo)
 
 	_, err := svc.FindAll(context.Background())
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+	if !errors.Is(err, rootErr) {
+		t.Fatalf("expected wrapped root error, got %v", err)
 	}
 	if err.Error() != "find all habits: boom" {
 		t.Fatalf("err = %q, want %q", err.Error(), "find all habits: boom")
