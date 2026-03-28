@@ -21,6 +21,7 @@ type Handler struct {
 
 type habitDoneService interface {
 	MarkDone(ctx context.Context, habitID int64) error
+	DoneHabitIDs(ctx context.Context) (map[int64]bool, error)
 }
 
 var (
@@ -61,9 +62,16 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	doneIDs, err := h.habitDoneService.DoneHabitIDs(r.Context())
+	if err != nil {
+		log.Printf("fetch done habits error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	cards := make([]model.HabitCard, len(habits))
 	for i, hab := range habits {
-		cards[i] = model.HabitCard{Name: hab.Name}
+		cards[i] = model.HabitCard{ID: hab.ID, Name: hab.Name, Done: doneIDs[hab.ID]}
 	}
 
 	data := model.DashboardData{
@@ -80,11 +88,6 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleHabitDone(w http.ResponseWriter, r *http.Request) {
-	if h.habitDoneService == nil {
-		http.Error(w, "service unavailable", http.StatusInternalServerError)
-		return
-	}
-
 	habitID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		http.Error(w, "invalid habit id", http.StatusBadRequest)

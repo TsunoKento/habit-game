@@ -8,6 +8,7 @@ import (
 
 type dailyRecordRepository interface {
 	ExistsByHabitAndDate(ctx context.Context, habitID int64, date string) (bool, error)
+	FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error)
 	Create(ctx context.Context, habitID int64, date string) error
 }
 
@@ -24,6 +25,11 @@ func NewHabitDone(repo dailyRecordRepository, now func() time.Time) *HabitDone {
 		repo: repo,
 		now:  now,
 	}
+}
+
+func (s *HabitDone) DoneHabitIDs(ctx context.Context) (map[int64]bool, error) {
+	date := s.now().In(jst).Format(time.DateOnly)
+	return s.repo.FindDoneHabitIDsByDate(ctx, date)
 }
 
 func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {

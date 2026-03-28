@@ -36,12 +36,9 @@ func main() {
 
 	h := handler.New(indexTmpl, habitService, habitDoneService)
 
-	mux := http.NewServeMux()
-	mux.Handle("/", h)
-
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, h); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }

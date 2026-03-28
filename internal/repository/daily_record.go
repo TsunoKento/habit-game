@@ -28,6 +28,29 @@ func (r *DailyRecord) ExistsByHabitAndDate(ctx context.Context, habitID int64, d
 	return exists, nil
 }
 
+func (r *DailyRecord) FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT habit_id FROM daily_records WHERE date = ?
+	`, date)
+	if err != nil {
+		return nil, fmt.Errorf("find done habits: %w", err)
+	}
+	defer rows.Close()
+
+	done := make(map[int64]bool)
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan habit_id: %w", err)
+		}
+		done[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate done habits: %w", err)
+	}
+	return done, nil
+}
+
 func (r *DailyRecord) Create(ctx context.Context, habitID int64, date string) error {
 	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO daily_records (habit_id, date)

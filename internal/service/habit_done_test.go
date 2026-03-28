@@ -10,12 +10,20 @@ import (
 )
 
 type dailyRecordRepositoryMock struct {
-	existsFn func(ctx context.Context, habitID int64, date string) (bool, error)
-	createFn func(ctx context.Context, habitID int64, date string) error
+	existsFn                func(ctx context.Context, habitID int64, date string) (bool, error)
+	findDoneHabitIDsByDateFn func(ctx context.Context, date string) (map[int64]bool, error)
+	createFn                func(ctx context.Context, habitID int64, date string) error
 }
 
 func (m *dailyRecordRepositoryMock) ExistsByHabitAndDate(ctx context.Context, habitID int64, date string) (bool, error) {
 	return m.existsFn(ctx, habitID, date)
+}
+
+func (m *dailyRecordRepositoryMock) FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error) {
+	if m.findDoneHabitIDsByDateFn != nil {
+		return m.findDoneHabitIDsByDateFn(ctx, date)
+	}
+	return map[int64]bool{}, nil
 }
 
 func (m *dailyRecordRepositoryMock) Create(ctx context.Context, habitID int64, date string) error {
@@ -75,6 +83,37 @@ func TestHabitDoneService_MarkDoneSkipsCreateWhenAlreadyDone(t *testing.T) {
 
 	if err := svc.MarkDone(context.Background(), 1); err != nil {
 		t.Fatalf("MarkDone: %v", err)
+	}
+}
+
+func TestHabitDoneService_DoneHabitIDsReturnsDoneSet(t *testing.T) {
+	tokyoNow := time.Date(2026, 3, 26, 8, 30, 0, 0, time.FixedZone("JST", 9*60*60))
+
+	repo := &dailyRecordRepositoryMock{
+		existsFn: func(ctx context.Context, habitID int64, date string) (bool, error) { return false, nil },
+		findDoneHabitIDsByDateFn: func(ctx context.Context, date string) (map[int64]bool, error) {
+			if date != "2026-03-26" {
+				t.Fatalf("unexpected date %q", date)
+			}
+			return map[int64]bool{1: true, 3: true}, nil
+		},
+		createFn: func(ctx context.Context, habitID int64, date string) error { return nil },
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time { return tokyoNow })
+
+	ids, err := svc.DoneHabitIDs(context.Background())
+	if err != nil {
+		t.Fatalf("DoneHabitIDs: %v", err)
+	}
+	if !ids[1] {
+		t.Error("expected habit 1 to be done")
+	}
+	if ids[2] {
+		t.Error("expected habit 2 to not be done")
+	}
+	if !ids[3] {
+		t.Error("expected habit 3 to be done")
 	}
 }
 
