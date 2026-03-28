@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"habit-game/internal/model"
+	"habit-game/internal/service"
 )
 
 type Handler struct {
-	tmpl            *template.Template
+	tmpl             *template.Template
+	service          service.HabitService
 	habitDoneService habitDoneService
 }
 
@@ -39,14 +41,11 @@ func formatDate(t time.Time) string {
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
-func New(tmpl *template.Template) http.Handler {
-	return NewWithDependencies(tmpl, nil)
-}
-
-func NewWithDependencies(tmpl *template.Template, habitDoneService habitDoneService) http.Handler {
+func New(tmpl *template.Template, svc service.HabitService, doneSvc habitDoneService) http.Handler {
 	h := &Handler{
-		tmpl:            tmpl,
-		habitDoneService: habitDoneService,
+		tmpl:             tmpl,
+		service:          svc,
+		habitDoneService: doneSvc,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)
@@ -55,15 +54,21 @@ func NewWithDependencies(tmpl *template.Template, habitDoneService habitDoneServ
 }
 
 func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
+	habits, err := h.service.FindAll(r.Context())
+	if err != nil {
+		log.Printf("find habits error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	cards := make([]model.HabitCard, len(habits))
+	for i, hab := range habits {
+		cards[i] = model.HabitCard{Name: hab.Name}
+	}
+
 	data := model.DashboardData{
-		Today:      formatDate(time.Now()),
-		TotalLevel: 7,
-		TotalExp:   210,
-		Habits: []model.HabitCard{
-			{ID: 1, Name: "早起き", Done: true, Level: 3, TotalExp: 90, Streak: 7},
-			{ID: 2, Name: "英語学習", Done: false, Level: 2, TotalExp: 50, Streak: 3},
-			{ID: 3, Name: "運動", Done: false, Level: 2, TotalExp: 70, Streak: 0},
-		},
+		Today:  formatDate(time.Now()),
+		Habits: cards,
 	}
 	var buf bytes.Buffer
 	if err := h.tmpl.Execute(&buf, data); err != nil {

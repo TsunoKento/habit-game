@@ -26,16 +26,22 @@ func main() {
 	}
 	defer conn.Close()
 
-	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+
+	habitRepository := repository.NewSQLiteHabitRepository(conn)
+	habitService := service.NewHabitService(habitRepository)
 
 	dailyRecordRepo := repository.NewDailyRecord(conn)
 	habitDoneService := service.NewHabitDone(dailyRecordRepo, nil)
 
-	h := handler.NewWithDependencies(tmpl, habitDoneService)
+	h := handler.New(indexTmpl, habitService, habitDoneService)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", h)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)
-	if err := http.ListenAndServe(addr, h); err != nil {
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }
