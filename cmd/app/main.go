@@ -30,14 +30,15 @@ func main() {
 
 	habitRepository := repository.NewSQLiteHabitRepository(conn)
 	habitService := service.NewHabitService(habitRepository)
-	dashboardHandler := handler.New(indexTmpl, habitService)
 
-	mux := http.NewServeMux()
-	mux.Handle("GET /", dashboardHandler)
+	dailyRecordRepo := repository.NewDailyRecord(conn)
+	habitDoneService := service.NewHabitDone(dailyRecordRepo, nil)
+
+	h := handler.New(indexTmpl, habitService, habitDoneService)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, h); err != nil {
 		log.Fatalf("server error: %v", err)
 	}
 }

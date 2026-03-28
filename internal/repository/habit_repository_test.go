@@ -29,7 +29,7 @@ func TestSQLiteHabitRepository_FindAll(t *testing.T) {
 	}
 
 	tests := []struct {
-		id         int
+		id         int64
 		name       string
 		expPerDone int
 	}{
