@@ -7,7 +7,6 @@ import (
 )
 
 type dailyRecordRepository interface {
-	ExistsByHabitAndDate(ctx context.Context, habitID int64, date string) (bool, error)
 	FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error)
 	Create(ctx context.Context, habitID int64, date string) error
 	DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error
@@ -35,15 +34,6 @@ func (s *HabitDone) DoneHabitIDs(ctx context.Context) (map[int64]bool, error) {
 
 func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {
 	date := s.now().In(jst).Format(time.DateOnly)
-
-	exists, err := s.repo.ExistsByHabitAndDate(ctx, habitID, date)
-	if err != nil {
-		return fmt.Errorf("check existing daily record: %w", err)
-	}
-	if exists {
-		return nil
-	}
-
 	if err := s.repo.Create(ctx, habitID, date); err != nil {
 		return fmt.Errorf("create daily record: %w", err)
 	}

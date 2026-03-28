@@ -10,17 +10,9 @@ import (
 )
 
 type dailyRecordRepositoryMock struct {
-	existsFn                func(ctx context.Context, habitID int64, date string) (bool, error)
 	findDoneHabitIDsByDateFn func(ctx context.Context, date string) (map[int64]bool, error)
 	createFn                func(ctx context.Context, habitID int64, date string) error
 	deleteFn                func(ctx context.Context, habitID int64, date string) error
-}
-
-func (m *dailyRecordRepositoryMock) ExistsByHabitAndDate(ctx context.Context, habitID int64, date string) (bool, error) {
-	if m.existsFn != nil {
-		return m.existsFn(ctx, habitID, date)
-	}
-	return false, nil
 }
 
 func (m *dailyRecordRepositoryMock) FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error) {
@@ -44,24 +36,15 @@ func (m *dailyRecordRepositoryMock) DeleteByHabitAndDate(ctx context.Context, ha
 	return nil
 }
 
-func TestHabitDoneService_MarkDoneCreatesRecordWhenNotYetDone(t *testing.T) {
+func TestHabitDoneService_MarkDoneCreatesRecord(t *testing.T) {
 	tokyoNow := time.Date(2026, 3, 26, 8, 30, 0, 0, time.FixedZone("JST", 9*60*60))
 
 	var gotHabitID int64
 	var gotDate string
 	repo := &dailyRecordRepositoryMock{
-		existsFn: func(ctx context.Context, habitID int64, date string) (bool, error) {
+		createFn: func(ctx context.Context, habitID int64, date string) error {
 			gotHabitID = habitID
 			gotDate = date
-			return false, nil
-		},
-		createFn: func(ctx context.Context, habitID int64, date string) error {
-			if habitID != 3 {
-				t.Fatalf("Create habitID = %d, want 3", habitID)
-			}
-			if date != "2026-03-26" {
-				t.Fatalf("Create date = %q, want 2026-03-26", date)
-			}
 			return nil
 		},
 	}
@@ -71,22 +54,19 @@ func TestHabitDoneService_MarkDoneCreatesRecordWhenNotYetDone(t *testing.T) {
 	if err := svc.MarkDone(context.Background(), 3); err != nil {
 		t.Fatalf("MarkDone: %v", err)
 	}
-
 	if gotHabitID != 3 {
-		t.Fatalf("ExistsByHabitAndDate habitID = %d, want 3", gotHabitID)
+		t.Fatalf("Create habitID = %d, want 3", gotHabitID)
 	}
 	if gotDate != "2026-03-26" {
-		t.Fatalf("ExistsByHabitAndDate date = %q, want 2026-03-26", gotDate)
+		t.Fatalf("Create date = %q, want 2026-03-26", gotDate)
 	}
 }
 
-func TestHabitDoneService_MarkDoneSkipsCreateWhenAlreadyDone(t *testing.T) {
+func TestHabitDoneService_MarkDoneIsIdempotent(t *testing.T) {
+	callCount := 0
 	repo := &dailyRecordRepositoryMock{
-		existsFn: func(ctx context.Context, habitID int64, date string) (bool, error) {
-			return true, nil
-		},
 		createFn: func(ctx context.Context, habitID int64, date string) error {
-			t.Fatal("Create should not be called when record already exists")
+			callCount++
 			return nil
 		},
 	}
@@ -96,7 +76,13 @@ func TestHabitDoneService_MarkDoneSkipsCreateWhenAlreadyDone(t *testing.T) {
 	})
 
 	if err := svc.MarkDone(context.Background(), 1); err != nil {
-		t.Fatalf("MarkDone: %v", err)
+		t.Fatalf("first MarkDone: %v", err)
+	}
+	if err := svc.MarkDone(context.Background(), 1); err != nil {
+		t.Fatalf("second MarkDone: %v", err)
+	}
+	if callCount != 2 {
+		t.Fatalf("Create call count = %d, want 2", callCount)
 	}
 }
 
@@ -104,14 +90,12 @@ func TestHabitDoneService_DoneHabitIDsReturnsDoneSet(t *testing.T) {
 	tokyoNow := time.Date(2026, 3, 26, 8, 30, 0, 0, time.FixedZone("JST", 9*60*60))
 
 	repo := &dailyRecordRepositoryMock{
-		existsFn: func(ctx context.Context, habitID int64, date string) (bool, error) { return false, nil },
 		findDoneHabitIDsByDateFn: func(ctx context.Context, date string) (map[int64]bool, error) {
 			if date != "2026-03-26" {
 				t.Fatalf("unexpected date %q", date)
 			}
 			return map[int64]bool{1: true, 3: true}, nil
 		},
-		createFn: func(ctx context.Context, habitID int64, date string) error { return nil },
 	}
 
 	svc := service.NewHabitDone(repo, func() time.Time { return tokyoNow })
@@ -178,12 +162,8 @@ func TestHabitDoneService_MarkUndoneReturnsRepositoryError(t *testing.T) {
 func TestHabitDoneService_MarkDoneReturnsRepositoryError(t *testing.T) {
 	wantErr := errors.New("boom")
 	repo := &dailyRecordRepositoryMock{
-		existsFn: func(ctx context.Context, habitID int64, date string) (bool, error) {
-			return false, wantErr
-		},
 		createFn: func(ctx context.Context, habitID int64, date string) error {
-			t.Fatal("Create should not be called when exists check fails")
-			return nil
+			return wantErr
 		},
 	}
 
