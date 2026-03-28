@@ -29,7 +29,11 @@ func NewHabitDone(repo dailyRecordRepository, now func() time.Time) *HabitDone {
 
 func (s *HabitDone) DoneHabitIDs(ctx context.Context) (map[int64]bool, error) {
 	date := s.now().In(jst).Format(time.DateOnly)
-	return s.repo.FindDoneHabitIDsByDate(ctx, date)
+	ids, err := s.repo.FindDoneHabitIDsByDate(ctx, date)
+	if err != nil {
+		return nil, fmt.Errorf("find done habit IDs by date: %w", err)
+	}
+	return ids, nil
 }
 
 func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {
