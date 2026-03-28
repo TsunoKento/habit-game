@@ -15,13 +15,21 @@ import (
 )
 
 type habitDoneServiceStub struct {
-	markDoneFn      func(ctx context.Context, habitID int64) error
-	doneHabitIDsFn  func(ctx context.Context) (map[int64]bool, error)
+	markDoneFn     func(ctx context.Context, habitID int64) error
+	markUndoneFn   func(ctx context.Context, habitID int64) error
+	doneHabitIDsFn func(ctx context.Context) (map[int64]bool, error)
 }
 
 func (s habitDoneServiceStub) MarkDone(ctx context.Context, habitID int64) error {
 	if s.markDoneFn != nil {
 		return s.markDoneFn(ctx, habitID)
+	}
+	return nil
+}
+
+func (s habitDoneServiceStub) MarkUndone(ctx context.Context, habitID int64) error {
+	if s.markUndoneFn != nil {
+		return s.markUndoneFn(ctx, habitID)
 	}
 	return nil
 }
@@ -128,8 +136,8 @@ func TestGetDashboard_ShowsDoneStateFromService(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", w.Result().StatusCode)
 	}
 	body := w.Body.String()
-	if !strings.Contains(body, "達成済み") {
-		t.Errorf("body does not contain '達成済み': %s", body)
+	if !strings.Contains(body, "取り消す") {
+		t.Errorf("body does not contain '取り消す': %s", body)
 	}
 	if !strings.Contains(body, "達成する") {
 		t.Errorf("body does not contain '達成する': %s", body)
@@ -160,6 +168,52 @@ func TestPostHabitDone_RedirectsToDashboard(t *testing.T) {
 	}
 	if location := w.Result().Header.Get("Location"); location != "/" {
 		t.Fatalf("Location = %q, want /", location)
+	}
+}
+
+func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
+	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+
+	var gotHabitID int64
+	h := handler.New(tmpl, nil, habitDoneServiceStub{
+		markUndoneFn: func(ctx context.Context, habitID int64) error {
+			gotHabitID = habitID
+			return nil
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/habits/3/undone", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Result().StatusCode != http.StatusSeeOther {
+		t.Fatalf("expected status 303, got %d", w.Result().StatusCode)
+	}
+	if gotHabitID != 3 {
+		t.Fatalf("MarkUndone habitID = %d, want 3", gotHabitID)
+	}
+	if location := w.Result().Header.Get("Location"); location != "/" {
+		t.Fatalf("Location = %q, want /", location)
+	}
+}
+
+func TestPostHabitUndone_ReturnsBadRequestForInvalidID(t *testing.T) {
+	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	h := handler.New(tmpl, nil, habitDoneServiceStub{
+		markUndoneFn: func(ctx context.Context, habitID int64) error {
+			t.Fatal("MarkUndone should not be called for invalid ID")
+			return nil
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/undone", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Result().StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", w.Result().StatusCode)
 	}
 }
 

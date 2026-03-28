@@ -21,6 +21,7 @@ type Handler struct {
 
 type habitDoneService interface {
 	MarkDone(ctx context.Context, habitID int64) error
+	MarkUndone(ctx context.Context, habitID int64) error
 	DoneHabitIDs(ctx context.Context) (map[int64]bool, error)
 }
 
@@ -51,6 +52,7 @@ func New(tmpl *template.Template, svc service.HabitService, doneSvc habitDoneSer
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)
 	mux.HandleFunc("POST /habits/{id}/done", h.handleHabitDone)
+	mux.HandleFunc("POST /habits/{id}/undone", h.handleHabitUndone)
 	return mux
 }
 
@@ -97,6 +99,22 @@ func (h *Handler) handleHabitDone(w http.ResponseWriter, r *http.Request) {
 	if err := h.habitDoneService.MarkDone(r.Context(), habitID); err != nil {
 		log.Printf("mark done error: %v", err)
 		http.Error(w, "failed to record habit completion", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func (h *Handler) handleHabitUndone(w http.ResponseWriter, r *http.Request) {
+	habitID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid habit id", http.StatusBadRequest)
+		return
+	}
+
+	if err := h.habitDoneService.MarkUndone(r.Context(), habitID); err != nil {
+		log.Printf("mark undone error: %v", err)
+		http.Error(w, "failed to cancel habit completion", http.StatusInternalServerError)
 		return
 	}
 

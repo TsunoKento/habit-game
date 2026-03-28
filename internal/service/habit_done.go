@@ -10,6 +10,7 @@ type dailyRecordRepository interface {
 	ExistsByHabitAndDate(ctx context.Context, habitID int64, date string) (bool, error)
 	FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error)
 	Create(ctx context.Context, habitID int64, date string) error
+	DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error
 }
 
 type HabitDone struct {
@@ -45,6 +46,14 @@ func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {
 
 	if err := s.repo.Create(ctx, habitID, date); err != nil {
 		return fmt.Errorf("create daily record: %w", err)
+	}
+	return nil
+}
+
+func (s *HabitDone) MarkUndone(ctx context.Context, habitID int64) error {
+	date := s.now().In(jst).Format(time.DateOnly)
+	if err := s.repo.DeleteByHabitAndDate(ctx, habitID, date); err != nil {
+		return fmt.Errorf("delete daily record: %w", err)
 	}
 	return nil
 }

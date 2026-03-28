@@ -51,6 +51,15 @@ func (r *DailyRecord) FindDoneHabitIDsByDate(ctx context.Context, date string) (
 	return done, nil
 }
 
+func (r *DailyRecord) DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error {
+	if _, err := r.db.ExecContext(ctx, `
+		DELETE FROM daily_records WHERE habit_id = ? AND date = ?
+	`, habitID, date); err != nil {
+		return fmt.Errorf("delete daily_records: %w", err)
+	}
+	return nil
+}
+
 func (r *DailyRecord) Create(ctx context.Context, habitID int64, date string) error {
 	if _, err := r.db.ExecContext(ctx, `
 		INSERT INTO daily_records (habit_id, date)

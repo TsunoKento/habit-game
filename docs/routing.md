@@ -5,7 +5,8 @@
 | Method | Path | 用途 |
 |---|---|---|
 | GET | `/` | ダッシュボード表示 |
-| POST | `/habits/:id/check` | 習慣の当日達成記録 |
+| POST | `/habits/:id/done` | 習慣の当日達成記録 |
+| POST | `/habits/:id/undone` | 習慣の当日達成取り消し |
 | GET | `/history` | 履歴表示 |
 | GET | `/settings` | 設定表示 |
 

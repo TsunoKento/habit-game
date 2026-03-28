@@ -74,6 +74,34 @@ func TestDailyRecordRepository_FindDoneHabitIDsByDate(t *testing.T) {
 	}
 }
 
+func TestDailyRecordRepository_DeleteByHabitAndDate(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+	date := "2026-03-26"
+
+	if err := repo.Create(ctx, 1, date); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := repo.DeleteByHabitAndDate(ctx, 1, date); err != nil {
+		t.Fatalf("DeleteByHabitAndDate: %v", err)
+	}
+
+	exists, err := repo.ExistsByHabitAndDate(ctx, 1, date)
+	if err != nil {
+		t.Fatalf("ExistsByHabitAndDate after delete: %v", err)
+	}
+	if exists {
+		t.Fatal("expected record to not exist after delete")
+	}
+}
+
 func TestDailyRecordRepository_CreateRejectsDuplicateHabitAndDate(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {

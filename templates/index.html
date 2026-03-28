@@ -85,24 +85,27 @@
       border: none;
     }
 
-    .check-btn:not(:disabled) {
+    .check-btn:not(.undo-btn) {
       background: #2563eb;
       color: #fff;
     }
 
-    .check-btn:not(:disabled):hover {
+    .check-btn:not(.undo-btn):hover {
       background: #1d4ed8;
     }
 
-    .check-btn:not(:disabled):focus-visible {
+    .check-btn:not(.undo-btn):focus-visible {
       outline: 2px solid #2563eb;
       outline-offset: 2px;
     }
 
-    .check-btn:disabled {
+    .undo-btn {
       background: transparent;
       color: #9ca3af;
-      cursor: default;
+    }
+
+    .undo-btn:hover {
+      color: #6b7280;
     }
   </style>
 </head>
@@ -121,11 +124,15 @@
           <span class="habit-name{{if .Done}} done{{end}}">{{.Name}}</span>
           <span class="habit-meta">Lv.{{.Level}} &nbsp;·&nbsp; {{.TotalExp}} EXP &nbsp;·&nbsp; {{.Streak}}日連続</span>
         </div>
-        <form method="post" action="/habits/{{.ID}}/done">
-          <button class="check-btn" {{if .Done}}disabled{{end}}>
-            {{if .Done}}達成済み{{else}}達成する{{end}}
-          </button>
+        {{if .Done}}
+        <form method="post" action="/habits/{{.ID}}/undone">
+          <button class="check-btn undo-btn">取り消す</button>
         </form>
+        {{else}}
+        <form method="post" action="/habits/{{.ID}}/done">
+          <button class="check-btn">達成する</button>
+        </form>
+        {{end}}
       </li>
       {{end}}
     </ul>
