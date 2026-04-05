@@ -11,8 +11,8 @@ import (
 
 type dailyRecordRepositoryMock struct {
 	findDoneHabitIDsByDateFn func(ctx context.Context, date string) (map[int64]bool, error)
-	createFn                func(ctx context.Context, habitID int64, date string) error
-	deleteFn                func(ctx context.Context, habitID int64, date string) error
+	createFn                 func(ctx context.Context, habitID int64, date string) error
+	deleteFn                 func(ctx context.Context, habitID int64, date string) error
 }
 
 func (m *dailyRecordRepositoryMock) FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error) {
