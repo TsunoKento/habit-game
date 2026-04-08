@@ -74,15 +74,14 @@ go test ./internal/service/...
 # カバレッジ確認
 go test -cover ./...
 
-# サーバ起動（Docker Compose）
-docker compose up
+# 開発サーバ起動（air ホットリロード）
+docker compose --profile dev up watch
 
-# バックグラウンド起動
-docker compose up -d
-
-# 停止
-docker compose down
+# 開発サーバ停止
+docker compose --profile dev down
 ```
+
+> **注意**: 開発中は `watch` サービス（air）を使う。コード変更時に自動リビルドされるため、手動で `--build` し直す必要がない。
 
 ---
 
