@@ -37,6 +37,29 @@ func (r *DailyRecord) FindDoneHabitIDsByDate(ctx context.Context, date string) (
 	return done, nil
 }
 
+func (r *DailyRecord) FindDatesByHabitID(ctx context.Context, habitID int64) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT strftime('%Y-%m-%d', date) FROM daily_records WHERE habit_id = ? ORDER BY date
+	`, habitID)
+	if err != nil {
+		return nil, fmt.Errorf("find dates by habit: %w", err)
+	}
+	defer rows.Close()
+
+	var dates []string
+	for rows.Next() {
+		var d string
+		if err := rows.Scan(&d); err != nil {
+			return nil, fmt.Errorf("scan date: %w", err)
+		}
+		dates = append(dates, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate dates: %w", err)
+	}
+	return dates, nil
+}
+
 func (r *DailyRecord) DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error {
 	if _, err := r.db.ExecContext(ctx, `
 		DELETE FROM daily_records WHERE habit_id = ? AND date = ?

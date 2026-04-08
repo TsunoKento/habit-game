@@ -23,6 +23,7 @@ type habitDoneService interface {
 	MarkDone(ctx context.Context, habitID int64) error
 	MarkUndone(ctx context.Context, habitID int64) error
 	DoneHabitIDs(ctx context.Context) (map[int64]bool, error)
+	Streak(ctx context.Context, habitID int64) (int, error)
 }
 
 var (
@@ -73,7 +74,13 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	cards := make([]model.HabitCard, len(habits))
 	for i, hab := range habits {
-		cards[i] = model.HabitCard{ID: hab.ID, Name: hab.Name, Done: doneIDs[hab.ID]}
+		streak, err := h.habitDoneService.Streak(r.Context(), hab.ID)
+		if err != nil {
+			log.Printf("calculate streak error: %v", err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		cards[i] = model.HabitCard{ID: hab.ID, Name: hab.Name, Done: doneIDs[hab.ID], Streak: streak}
 	}
 
 	data := model.DashboardData{

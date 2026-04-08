@@ -70,6 +70,66 @@ func TestDailyRecordRepository_DeleteByHabitAndDate(t *testing.T) {
 	}
 }
 
+func TestDailyRecordRepository_FindDatesByHabitID(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	// habit 1 に3日分の記録を作成
+	if err := repo.Create(ctx, 1, "2026-04-05"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := repo.Create(ctx, 1, "2026-04-06"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := repo.Create(ctx, 1, "2026-04-07"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	// habit 2 に1日分（混ざらないことの確認）
+	if err := repo.Create(ctx, 2, "2026-04-07"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	dates, err := repo.FindDatesByHabitID(ctx, 1)
+	if err != nil {
+		t.Fatalf("FindDatesByHabitID: %v", err)
+	}
+	if len(dates) != 3 {
+		t.Fatalf("expected 3 dates, got %d", len(dates))
+	}
+	// 日付昇順で返ること
+	want := []string{"2026-04-05", "2026-04-06", "2026-04-07"}
+	for i, d := range dates {
+		if d != want[i] {
+			t.Errorf("dates[%d] = %q, want %q", i, d, want[i])
+		}
+	}
+}
+
+func TestDailyRecordRepository_FindDatesByHabitID_Empty(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	dates, err := repo.FindDatesByHabitID(ctx, 999)
+	if err != nil {
+		t.Fatalf("FindDatesByHabitID: %v", err)
+	}
+	if len(dates) != 0 {
+		t.Fatalf("expected 0 dates, got %d", len(dates))
+	}
+}
+
 func TestDailyRecordRepository_CreateIsIdempotent(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {
