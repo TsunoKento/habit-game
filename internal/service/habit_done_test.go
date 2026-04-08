@@ -11,8 +11,16 @@ import (
 
 type dailyRecordRepositoryMock struct {
 	findDoneHabitIDsByDateFn func(ctx context.Context, date string) (map[int64]bool, error)
+	findDatesByHabitIDFn     func(ctx context.Context, habitID int64) ([]string, error)
 	createFn                 func(ctx context.Context, habitID int64, date string) error
 	deleteFn                 func(ctx context.Context, habitID int64, date string) error
+}
+
+func (m *dailyRecordRepositoryMock) FindDatesByHabitID(ctx context.Context, habitID int64) ([]string, error) {
+	if m.findDatesByHabitIDFn != nil {
+		return m.findDatesByHabitIDFn(ctx, habitID)
+	}
+	return nil, nil
 }
 
 func (m *dailyRecordRepositoryMock) FindDoneHabitIDsByDate(ctx context.Context, date string) (map[int64]bool, error) {
@@ -174,5 +182,129 @@ func TestHabitDoneService_MarkDoneReturnsRepositoryError(t *testing.T) {
 	err := svc.MarkDone(context.Background(), 1)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("MarkDone error = %v, want wrapped %v", err, wantErr)
+	}
+}
+
+func TestHabitDoneService_Streak_ThreeConsecutiveDays(t *testing.T) {
+	// 今日=2026-04-07、4/5,4/6,4/7 の3日連続
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return []string{"2026-04-05", "2026-04-06", "2026-04-07"}, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 3 {
+		t.Fatalf("streak = %d, want 3", streak)
+	}
+}
+
+func TestHabitDoneService_Streak_TodayNotDone_YesterdayConsecutive(t *testing.T) {
+	// 今日=2026-04-07 だが記録なし、昨日まで2日連続 → 2
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return []string{"2026-04-05", "2026-04-06"}, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 2 {
+		t.Fatalf("streak = %d, want 2", streak)
+	}
+}
+
+func TestHabitDoneService_Streak_TodayAndYesterdayNotDone(t *testing.T) {
+	// 今日=2026-04-07、昨日もなし、一昨日だけあり → 0
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return []string{"2026-04-04", "2026-04-05"}, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 0 {
+		t.Fatalf("streak = %d, want 0", streak)
+	}
+}
+
+func TestHabitDoneService_Streak_GapInMiddle(t *testing.T) {
+	// 今日=2026-04-07、4/4,4/6,4/7 → 4/5 が空白なので 2日連続
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return []string{"2026-04-04", "2026-04-06", "2026-04-07"}, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 2 {
+		t.Fatalf("streak = %d, want 2", streak)
+	}
+}
+
+func TestHabitDoneService_Streak_NoRecords(t *testing.T) {
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return nil, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 0 {
+		t.Fatalf("streak = %d, want 0", streak)
+	}
+}
+
+func TestHabitDoneService_Streak_OnlyToday(t *testing.T) {
+	repo := &dailyRecordRepositoryMock{
+		findDatesByHabitIDFn: func(ctx context.Context, habitID int64) ([]string, error) {
+			return []string{"2026-04-07"}, nil
+		},
+	}
+
+	svc := service.NewHabitDone(repo, func() time.Time {
+		return time.Date(2026, 4, 7, 10, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+	})
+
+	streak, err := svc.Streak(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("Streak: %v", err)
+	}
+	if streak != 1 {
+		t.Fatalf("streak = %d, want 1", streak)
 	}
 }
