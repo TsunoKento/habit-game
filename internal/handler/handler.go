@@ -31,21 +31,10 @@ type habitDoneService interface {
 	Streak(ctx context.Context, habitID int64) (int, error)
 }
 
-var (
-	jst      = mustLoadLocation("Asia/Tokyo")
-	weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
-)
-
-func mustLoadLocation(name string) *time.Location {
-	loc, err := time.LoadLocation(name)
-	if err != nil {
-		panic(err)
-	}
-	return loc
-}
+var weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
 
 func formatDate(t time.Time) string {
-	t = t.In(jst)
+	t = t.In(service.JST)
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
