@@ -86,7 +86,7 @@ func TestExpService_Calculate_HabitExp(t *testing.T) {
 }
 
 func TestExpService_Calculate_LevelBoundaries(t *testing.T) {
-	singleHabit := []model.Habit{{ID: 1, Name: "test", ExpPerDone: 100}}
+	singleHabit := []model.Habit{{ID: 1, Name: "test", ExpPerDone: 1}}
 
 	tests := []struct {
 		name      string
@@ -94,10 +94,10 @@ func TestExpService_Calculate_LevelBoundaries(t *testing.T) {
 		wantLevel int
 	}{
 		{"0 EXP → Lv1", map[int64]int{}, 1},
-		{"99 EXP → Lv1", map[int64]int{1: 0}, 1},
-		{"100 EXP → Lv2", map[int64]int{1: 1}, 2},
-		{"200 EXP → Lv3", map[int64]int{1: 2}, 3},
-		{"300 EXP → Lv4", map[int64]int{1: 3}, 4},
+		{"99 EXP → Lv1", map[int64]int{1: 99}, 1},
+		{"100 EXP → Lv2", map[int64]int{1: 100}, 2},
+		{"200 EXP → Lv3", map[int64]int{1: 200}, 3},
+		{"300 EXP → Lv4", map[int64]int{1: 300}, 4},
 	}
 
 	for _, tt := range tests {
