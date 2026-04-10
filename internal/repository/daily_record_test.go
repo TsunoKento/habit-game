@@ -141,11 +141,15 @@ func TestDailyRecordRepository_CountByHabitID(t *testing.T) {
 	ctx := context.Background()
 
 	// habit 1: 3 records
-	repo.Create(ctx, 1, "2026-04-05")
-	repo.Create(ctx, 1, "2026-04-06")
-	repo.Create(ctx, 1, "2026-04-07")
+	for _, date := range []string{"2026-04-05", "2026-04-06", "2026-04-07"} {
+		if err := repo.Create(ctx, 1, date); err != nil {
+			t.Fatalf("Create habit 1 (%s): %v", date, err)
+		}
+	}
 	// habit 2: 1 record
-	repo.Create(ctx, 2, "2026-04-07")
+	if err := repo.Create(ctx, 2, "2026-04-07"); err != nil {
+		t.Fatalf("Create habit 2 (2026-04-07): %v", err)
+	}
 	// habit 3: 0 records
 
 	counts, err := repo.CountByHabitID(ctx)
