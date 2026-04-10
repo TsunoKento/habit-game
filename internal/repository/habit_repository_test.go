@@ -33,9 +33,9 @@ func TestSQLiteHabitRepository_FindAll(t *testing.T) {
 		name       string
 		expPerDone int
 	}{
-		{1, "早起き", 10},
-		{2, "英語学習", 10},
-		{3, "運動", 10},
+		{1, "早起き", 33},
+		{2, "英語学習", 33},
+		{3, "運動", 34},
 	}
 
 	for i, tt := range tests {

@@ -127,7 +127,7 @@
       <li class="habit-item">
         <div class="habit-info">
           <span class="habit-name{{if .Done}} done{{end}}">{{.Name}}</span>
-          <span class="habit-meta">Lv.{{.Level}} &nbsp;·&nbsp; {{.TotalExp}} EXP &nbsp;·&nbsp; {{.Streak}}日連続</span>
+          <span class="habit-meta">{{.TotalExp}} EXP &nbsp;·&nbsp; {{.Streak}}日連続</span>
         </div>
         {{if .Done}}
         <form method="post" action="/habits/{{.ID}}/undone">

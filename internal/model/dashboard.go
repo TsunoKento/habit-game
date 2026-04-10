@@ -4,7 +4,6 @@ type HabitCard struct {
 	ID       int64
 	Name     string
 	Done     bool
-	Level    int
 	TotalExp int
 	Streak   int
 }

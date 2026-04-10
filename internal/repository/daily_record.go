@@ -60,6 +60,30 @@ func (r *DailyRecord) FindDatesByHabitID(ctx context.Context, habitID int64) ([]
 	return dates, nil
 }
 
+func (r *DailyRecord) CountByHabitID(ctx context.Context) (map[int64]int, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT habit_id, COUNT(*) FROM daily_records GROUP BY habit_id
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("count by habit: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[int64]int)
+	for rows.Next() {
+		var habitID int64
+		var count int
+		if err := rows.Scan(&habitID, &count); err != nil {
+			return nil, fmt.Errorf("scan count: %w", err)
+		}
+		counts[habitID] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate counts: %w", err)
+	}
+	return counts, nil
+}
+
 func (r *DailyRecord) DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error {
 	if _, err := r.db.ExecContext(ctx, `
 		DELETE FROM daily_records WHERE habit_id = ? AND date = ?

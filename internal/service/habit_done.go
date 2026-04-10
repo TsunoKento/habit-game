@@ -29,7 +29,7 @@ func NewHabitDone(repo dailyRecordRepository, now func() time.Time) *HabitDone {
 }
 
 func (s *HabitDone) DoneHabitIDs(ctx context.Context) (map[int64]bool, error) {
-	date := s.now().In(jst).Format(time.DateOnly)
+	date := s.now().In(JST).Format(time.DateOnly)
 	ids, err := s.repo.FindDoneHabitIDsByDate(ctx, date)
 	if err != nil {
 		return nil, fmt.Errorf("find done habit IDs by date: %w", err)
@@ -38,7 +38,7 @@ func (s *HabitDone) DoneHabitIDs(ctx context.Context) (map[int64]bool, error) {
 }
 
 func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {
-	date := s.now().In(jst).Format(time.DateOnly)
+	date := s.now().In(JST).Format(time.DateOnly)
 	if err := s.repo.Create(ctx, habitID, date); err != nil {
 		return fmt.Errorf("create daily record: %w", err)
 	}
@@ -46,7 +46,7 @@ func (s *HabitDone) MarkDone(ctx context.Context, habitID int64) error {
 }
 
 func (s *HabitDone) MarkUndone(ctx context.Context, habitID int64) error {
-	date := s.now().In(jst).Format(time.DateOnly)
+	date := s.now().In(JST).Format(time.DateOnly)
 	if err := s.repo.DeleteByHabitAndDate(ctx, habitID, date); err != nil {
 		return fmt.Errorf("delete daily record: %w", err)
 	}
@@ -59,7 +59,7 @@ func (s *HabitDone) Streak(ctx context.Context, habitID int64) (int, error) {
 		return 0, fmt.Errorf("find dates for streak: %w", err)
 	}
 
-	today := s.now().In(jst).Format(time.DateOnly)
+	today := s.now().In(JST).Format(time.DateOnly)
 
 	// 日付をセットに変換
 	dateSet := make(map[string]bool, len(dates))
@@ -86,7 +86,7 @@ func (s *HabitDone) Streak(ctx context.Context, habitID int64) (int, error) {
 	return streak, nil
 }
 
-var jst = mustLoadLocation("Asia/Tokyo")
+var JST = mustLoadLocation("Asia/Tokyo")
 
 func mustLoadLocation(name string) *time.Location {
 	loc, err := time.LoadLocation(name)
