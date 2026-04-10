@@ -4,7 +4,7 @@
 
 全習慣の達成記録から動的に算出する。DBには保存しない。
 
-```
+```text
 Total EXP = SUM(達成回数_i × exp_per_done_i)
 ```
 
@@ -16,7 +16,7 @@ Total EXP = SUM(達成回数_i × exp_per_done_i)
 
 総合経験値から以下の式で算出する。
 
-```
+```text
 Level = floor(totalEXP / 100) + 1
 ```
 
