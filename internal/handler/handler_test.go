@@ -11,6 +11,7 @@ import (
 
 	"habit-game/internal/handler"
 	"habit-game/internal/model"
+	"habit-game/internal/service"
 	"habit-game/templates"
 )
 
@@ -49,6 +50,17 @@ func (s habitDoneServiceStub) DoneHabitIDs(ctx context.Context) (map[int64]bool,
 	return map[int64]bool{}, nil
 }
 
+type expServiceStub struct {
+	calculateFn func(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
+}
+
+func (s expServiceStub) Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error) {
+	if s.calculateFn != nil {
+		return s.calculateFn(ctx, habits)
+	}
+	return &service.ExpResult{Level: 1, HabitExp: map[int64]int{}}, nil
+}
+
 type mockHabitService struct {
 	habits []model.Habit
 	err    error
@@ -61,7 +73,7 @@ func (m *mockHabitService) FindAll(_ context.Context) ([]model.Habit, error) {
 func TestGetDashboard(t *testing.T) {
 	tmpl := template.Must(template.New("index").Parse(`<h1>Habit Growth Tracker</h1>`))
 	svc := &mockHabitService{}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{})
+	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -85,7 +97,7 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 			{ID: 3, Name: "運動"},
 		},
 	}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{})
+	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -106,7 +118,7 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 func TestGetDashboard_Returns500WhenServiceFails(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	svc := &mockHabitService{err: errors.New("db down")}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{})
+	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -134,7 +146,7 @@ func TestGetDashboard_ShowsDoneStateFromService(t *testing.T) {
 			return map[int64]bool{1: true}, nil
 		},
 	}
-	h := handler.New(tmpl, svc, doneSvc)
+	h := handler.New(tmpl, svc, doneSvc, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -161,7 +173,7 @@ func TestPostHabitDone_RedirectsToDashboard(t *testing.T) {
 			gotHabitID = habitID
 			return nil
 		},
-	})
+	}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/2/done", nil)
 	w := httptest.NewRecorder()
@@ -188,7 +200,7 @@ func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
 			gotHabitID = habitID
 			return nil
 		},
-	})
+	}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/3/undone", nil)
 	w := httptest.NewRecorder()
@@ -213,7 +225,7 @@ func TestPostHabitUndone_ReturnsBadRequestForInvalidID(t *testing.T) {
 			t.Fatal("MarkUndone should not be called for invalid ID")
 			return nil
 		},
-	})
+	}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/undone", nil)
 	w := httptest.NewRecorder()
@@ -232,7 +244,7 @@ func TestPostHabitDone_ReturnsBadRequestForInvalidID(t *testing.T) {
 			t.Fatal("MarkDone should not be called for invalid ID")
 			return nil
 		},
-	})
+	}, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/done", nil)
 	w := httptest.NewRecorder()
@@ -263,7 +275,7 @@ func TestGetDashboard_ShowsStreak(t *testing.T) {
 			return 0, nil
 		},
 	}
-	h := handler.New(tmpl, svc, doneSvc)
+	h := handler.New(tmpl, svc, doneSvc, expServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -278,5 +290,44 @@ func TestGetDashboard_ShowsStreak(t *testing.T) {
 	}
 	if !strings.Contains(body, "0日連続") {
 		t.Errorf("body does not contain '0日連続': %s", body)
+	}
+}
+
+func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
+	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	svc := &mockHabitService{
+		habits: []model.Habit{
+			{ID: 1, Name: "早起き", ExpPerDone: 33},
+			{ID: 2, Name: "英語学習", ExpPerDone: 33},
+			{ID: 3, Name: "運動", ExpPerDone: 34},
+		},
+	}
+	expSvc := expServiceStub{
+		calculateFn: func(ctx context.Context, habits []model.Habit) (*service.ExpResult, error) {
+			return &service.ExpResult{
+				TotalExp: 200,
+				Level:    3,
+				HabitExp: map[int64]int{1: 99, 2: 33, 3: 68},
+			}, nil
+		},
+	}
+	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expSvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Result().StatusCode)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Lv.3") {
+		t.Errorf("body does not contain 'Lv.3'")
+	}
+	if !strings.Contains(body, "200 EXP") {
+		t.Errorf("body does not contain '200 EXP'")
+	}
+	if !strings.Contains(body, "99 EXP") {
+		t.Errorf("body does not contain '99 EXP' for habit 1")
 	}
 }

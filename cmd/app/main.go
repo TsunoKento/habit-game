@@ -33,8 +33,9 @@ func main() {
 
 	dailyRecordRepo := repository.NewDailyRecord(conn)
 	habitDoneService := service.NewHabitDone(dailyRecordRepo, nil)
+	expService := service.NewExpService(dailyRecordRepo)
 
-	h := handler.New(indexTmpl, habitService, habitDoneService)
+	h := handler.New(indexTmpl, habitService, habitDoneService, expService)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)

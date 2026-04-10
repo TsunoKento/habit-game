@@ -8,7 +8,7 @@
 |---|---|---|
 | id | INTEGER | 主キー |
 | name | TEXT | 習慣名 |
-| exp_per_done | INTEGER | 1回達成時の基本経験値 |
+| exp_per_done | INTEGER | 1回達成時の基本経験値（全習慣の合計が100になるように設定） |
 | created_at | DATETIME | 作成日時 |
 
 ---

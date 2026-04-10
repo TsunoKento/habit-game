@@ -130,6 +130,58 @@ func TestDailyRecordRepository_FindDatesByHabitID_Empty(t *testing.T) {
 	}
 }
 
+func TestDailyRecordRepository_CountByHabitID(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	// habit 1: 3 records
+	repo.Create(ctx, 1, "2026-04-05")
+	repo.Create(ctx, 1, "2026-04-06")
+	repo.Create(ctx, 1, "2026-04-07")
+	// habit 2: 1 record
+	repo.Create(ctx, 2, "2026-04-07")
+	// habit 3: 0 records
+
+	counts, err := repo.CountByHabitID(ctx)
+	if err != nil {
+		t.Fatalf("CountByHabitID: %v", err)
+	}
+	if counts[1] != 3 {
+		t.Errorf("habit 1 count = %d, want 3", counts[1])
+	}
+	if counts[2] != 1 {
+		t.Errorf("habit 2 count = %d, want 1", counts[2])
+	}
+	if counts[3] != 0 {
+		t.Errorf("habit 3 count = %d, want 0", counts[3])
+	}
+}
+
+func TestDailyRecordRepository_CountByHabitID_Empty(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	counts, err := repo.CountByHabitID(ctx)
+	if err != nil {
+		t.Fatalf("CountByHabitID: %v", err)
+	}
+	if len(counts) != 0 {
+		t.Errorf("expected empty map, got %v", counts)
+	}
+}
+
 func TestDailyRecordRepository_CreateIsIdempotent(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {

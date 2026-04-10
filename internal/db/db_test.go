@@ -96,9 +96,9 @@ func TestOpen_SeedsInitialHabits(t *testing.T) {
 		expPerDone int
 	}
 	want := []habit{
-		{1, "早起き", 10},
-		{2, "英語学習", 10},
-		{3, "運動", 10},
+		{1, "早起き", 33},
+		{2, "英語学習", 33},
+		{3, "運動", 34},
 	}
 
 	rows, err := conn.Query(`SELECT id, name, exp_per_done FROM habits ORDER BY id`)

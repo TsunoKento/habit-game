@@ -17,6 +17,11 @@ type Handler struct {
 	tmpl             *template.Template
 	service          service.HabitService
 	habitDoneService habitDoneService
+	expService       expService
+}
+
+type expService interface {
+	Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
 }
 
 type habitDoneService interface {
@@ -44,11 +49,12 @@ func formatDate(t time.Time) string {
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
-func New(tmpl *template.Template, svc service.HabitService, doneSvc habitDoneService) http.Handler {
+func New(tmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService) http.Handler {
 	h := &Handler{
 		tmpl:             tmpl,
 		service:          svc,
 		habitDoneService: doneSvc,
+		expService:       expSvc,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)
@@ -72,6 +78,13 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expResult, err := h.expService.Calculate(r.Context(), habits)
+	if err != nil {
+		log.Printf("calculate exp error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	cards := make([]model.HabitCard, len(habits))
 	for i, hab := range habits {
 		streak, err := h.habitDoneService.Streak(r.Context(), hab.ID)
@@ -80,12 +93,20 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		cards[i] = model.HabitCard{ID: hab.ID, Name: hab.Name, Done: doneIDs[hab.ID], Streak: streak}
+		cards[i] = model.HabitCard{
+			ID:       hab.ID,
+			Name:     hab.Name,
+			Done:     doneIDs[hab.ID],
+			TotalExp: expResult.HabitExp[hab.ID],
+			Streak:   streak,
+		}
 	}
 
 	data := model.DashboardData{
-		Today:  formatDate(time.Now()),
-		Habits: cards,
+		Today:      formatDate(time.Now()),
+		TotalLevel: expResult.Level,
+		TotalExp:   expResult.TotalExp,
+		Habits:     cards,
 	}
 	var buf bytes.Buffer
 	if err := h.tmpl.Execute(&buf, data); err != nil {
