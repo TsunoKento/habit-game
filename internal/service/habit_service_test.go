@@ -10,8 +10,9 @@ import (
 )
 
 type stubHabitRepository struct {
-	habits []model.Habit
-	err    error
+	habits     []model.Habit
+	err        error
+	updatedExp map[int64]int
 }
 
 func (r *stubHabitRepository) FindAll(context.Context) ([]model.Habit, error) {
@@ -19,6 +20,63 @@ func (r *stubHabitRepository) FindAll(context.Context) ([]model.Habit, error) {
 		return nil, r.err
 	}
 	return r.habits, nil
+}
+
+func (r *stubHabitRepository) UpdateExpPerDone(_ context.Context, updates map[int64]int) error {
+	r.updatedExp = updates
+	return nil
+}
+
+func TestHabitService_UpdateExpPerDone_Success(t *testing.T) {
+	repo := &stubHabitRepository{}
+	svc := service.NewHabitService(repo)
+
+	updates := map[int64]int{1: 50, 2: 30, 3: 20}
+	err := svc.UpdateExpPerDone(context.Background(), updates)
+	if err != nil {
+		t.Fatalf("UpdateExpPerDone: %v", err)
+	}
+
+	if repo.updatedExp == nil {
+		t.Fatal("expected repository UpdateExpPerDone to be called")
+	}
+	if repo.updatedExp[1] != 50 || repo.updatedExp[2] != 30 || repo.updatedExp[3] != 20 {
+		t.Fatalf("unexpected updates: %v", repo.updatedExp)
+	}
+}
+
+func TestHabitService_UpdateExpPerDone_ValidationError(t *testing.T) {
+	repo := &stubHabitRepository{}
+	svc := service.NewHabitService(repo)
+
+	updates := map[int64]int{1: 50, 2: 30, 3: 10} // sum = 90, not 100
+	err := svc.UpdateExpPerDone(context.Background(), updates)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !errors.Is(err, service.ErrExpSumInvalid) {
+		t.Fatalf("expected ErrExpSumInvalid, got %v", err)
+	}
+	if repo.updatedExp != nil {
+		t.Fatal("repository should not be called when validation fails")
+	}
+}
+
+func TestHabitService_UpdateExpPerDone_NegativeValue(t *testing.T) {
+	repo := &stubHabitRepository{}
+	svc := service.NewHabitService(repo)
+
+	updates := map[int64]int{1: -50, 2: 100, 3: 50} // sum = 100 but negative value
+	err := svc.UpdateExpPerDone(context.Background(), updates)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !errors.Is(err, service.ErrExpValueInvalid) {
+		t.Fatalf("expected ErrExpValueInvalid, got %v", err)
+	}
+	if repo.updatedExp != nil {
+		t.Fatal("repository should not be called when validation fails")
+	}
 }
 
 func TestHabitService_FindAll(t *testing.T) {

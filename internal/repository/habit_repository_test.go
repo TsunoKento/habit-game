@@ -55,6 +55,33 @@ func TestSQLiteHabitRepository_FindAll(t *testing.T) {
 	}
 }
 
+func TestSQLiteHabitRepository_UpdateExpPerDone(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewSQLiteHabitRepository(conn)
+
+	updates := map[int64]int{1: 50, 2: 30, 3: 20}
+	if err := repo.UpdateExpPerDone(context.Background(), updates); err != nil {
+		t.Fatalf("UpdateExpPerDone: %v", err)
+	}
+
+	habits, err := repo.FindAll(context.Background())
+	if err != nil {
+		t.Fatalf("FindAll: %v", err)
+	}
+
+	want := map[int64]int{1: 50, 2: 30, 3: 20}
+	for _, h := range habits {
+		if h.ExpPerDone != want[h.ID] {
+			t.Errorf("habit %d: ExpPerDone = %d, want %d", h.ID, h.ExpPerDone, want[h.ID])
+		}
+	}
+}
+
 func TestSQLiteHabitRepository_FindAll_OrdersByID(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {

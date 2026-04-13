@@ -28,6 +28,7 @@ func main() {
 
 	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	historyTmpl := template.Must(template.ParseFS(templates.FS, "history.html"))
+	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
 
 	habitRepository := repository.NewSQLiteHabitRepository(conn)
 	habitService := service.NewHabitService(habitRepository)
@@ -37,7 +38,7 @@ func main() {
 	expService := service.NewExpService(dailyRecordRepo)
 	historyService := service.NewHistoryService(habitService, dailyRecordRepo, nil)
 
-	h := handler.New(indexTmpl, historyTmpl, habitService, habitDoneService, expService, historyService)
+	h := handler.New(indexTmpl, historyTmpl, settingsTmpl, habitService, habitDoneService, expService, historyService)
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)

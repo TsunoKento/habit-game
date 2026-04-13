@@ -124,6 +124,18 @@
       outline: 2px solid #4b5563;
       outline-offset: 2px;
     }
+
+    .settings-link {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-decoration: none;
+    }
+
+    .settings-link:hover {
+      color: #111;
+    }
   </style>
 </head>
 <body>
@@ -132,6 +144,7 @@
     <p class="date">{{.Today}}</p>
     <p class="summary">総合 Lv.{{.TotalLevel}} &nbsp;/&nbsp; {{.TotalExp}} EXP</p>
     <a class="history-link" href="/history">履歴を見る</a>
+    <a class="settings-link" href="/settings">設定</a>
   </header>
 
   <main>
