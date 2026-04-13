@@ -84,6 +84,34 @@ func (r *DailyRecord) CountByHabitID(ctx context.Context) (map[int64]int, error)
 	return counts, nil
 }
 
+func (r *DailyRecord) FindByDateRange(ctx context.Context, from, to string) (map[string]map[int64]bool, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT strftime('%Y-%m-%d', date), habit_id FROM daily_records
+		WHERE date BETWEEN ? AND ?
+	`, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("find by date range: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]map[int64]bool)
+	for rows.Next() {
+		var date string
+		var habitID int64
+		if err := rows.Scan(&date, &habitID); err != nil {
+			return nil, fmt.Errorf("scan date range record: %w", err)
+		}
+		if result[date] == nil {
+			result[date] = make(map[int64]bool)
+		}
+		result[date][habitID] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate date range records: %w", err)
+	}
+	return result, nil
+}
+
 func (r *DailyRecord) DeleteByHabitAndDate(ctx context.Context, habitID int64, date string) error {
 	if _, err := r.db.ExecContext(ctx, `
 		DELETE FROM daily_records WHERE habit_id = ? AND date = ?

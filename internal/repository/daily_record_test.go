@@ -186,6 +186,72 @@ func TestDailyRecordRepository_CountByHabitID_Empty(t *testing.T) {
 	}
 }
 
+func TestDailyRecordRepository_FindByDateRange(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	// 複数日・複数習慣の記録を作成
+	if err := repo.Create(ctx, 1, "2026-04-01"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := repo.Create(ctx, 2, "2026-04-01"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := repo.Create(ctx, 1, "2026-04-03"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	// 範囲外の記録
+	if err := repo.Create(ctx, 1, "2026-03-31"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	result, err := repo.FindByDateRange(ctx, "2026-04-01", "2026-04-03")
+	if err != nil {
+		t.Fatalf("FindByDateRange: %v", err)
+	}
+
+	// 2026-04-01 に habit 1, 2 が達成
+	if !result["2026-04-01"][1] {
+		t.Error("expected habit 1 done on 2026-04-01")
+	}
+	if !result["2026-04-01"][2] {
+		t.Error("expected habit 2 done on 2026-04-01")
+	}
+	// 2026-04-03 に habit 1 が達成
+	if !result["2026-04-03"][1] {
+		t.Error("expected habit 1 done on 2026-04-03")
+	}
+	// 範囲外の 2026-03-31 は含まれない
+	if _, ok := result["2026-03-31"]; ok {
+		t.Error("expected 2026-03-31 to not be in result")
+	}
+}
+
+func TestDailyRecordRepository_FindByDateRange_Empty(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	result, err := repo.FindByDateRange(ctx, "2026-04-01", "2026-04-30")
+	if err != nil {
+		t.Fatalf("FindByDateRange: %v", err)
+	}
+	if len(result) != 0 {
+		t.Errorf("expected empty map, got %v", result)
+	}
+}
+
 func TestDailyRecordRepository_CreateIsIdempotent(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {
