@@ -109,6 +109,49 @@ func TestGetSettings_ShowsHabitExpPerDone(t *testing.T) {
 	}
 }
 
+func TestGetSettings_Returns500WhenServiceFails(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
+	svc := &mockHabitService{err: errors.New("db down")}
+	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestPostSettings_Returns500WhenServiceFails(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
+	svc := &mockHabitService{
+		habits: []model.Habit{
+			{ID: 1, Name: "早起き", ExpPerDone: 33},
+			{ID: 2, Name: "英語学習", ExpPerDone: 33},
+			{ID: 3, Name: "運動", ExpPerDone: 34},
+		},
+		updateExpFn: func(ctx context.Context, updates map[int64]int) error {
+			return errors.New("db down")
+		},
+	}
+	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+
+	form := strings.NewReader("exp_1=50&exp_2=30&exp_3=20")
+	req := httptest.NewRequest(http.MethodPost, "/settings", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
 func TestPostSettings_ValidationError(t *testing.T) {
 	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
