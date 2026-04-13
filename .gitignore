@@ -2,3 +2,4 @@ cmd/app/app
 data/
 tmp/
 .env
+.playwright-cli/
