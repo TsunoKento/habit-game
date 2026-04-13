@@ -38,6 +38,18 @@
       color: #9ca3af;
     }
 
+    .history-link {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-decoration: none;
+    }
+
+    .history-link:hover {
+      color: #111;
+    }
+
     main {
       max-width: 600px;
       margin: 0 auto;
@@ -119,6 +131,7 @@
     <h1>Habit Growth Tracker</h1>
     <p class="date">{{.Today}}</p>
     <p class="summary">総合 Lv.{{.TotalLevel}} &nbsp;/&nbsp; {{.TotalExp}} EXP</p>
+    <a class="history-link" href="/history">履歴を見る</a>
   </header>
 
   <main>

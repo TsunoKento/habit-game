@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>履歴 - Habit Growth Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      color: #111;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 24px 16px 16px;
+      border-bottom: 1px solid #e5e5e5;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      color: #111;
+    }
+
+    main {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 16px 40px;
+    }
+
+    .range-nav {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .range-nav a {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: #9ca3af;
+      text-decoration: none;
+    }
+
+    .range-nav a.active {
+      font-weight: 700;
+      color: #111;
+    }
+
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .history-table th {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: left;
+      padding: 12px 8px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .history-table td {
+      font-size: 1rem;
+      padding: 12px 8px;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .history-table td.date-cell {
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>履歴</h1>
+    <a class="back-link" href="/">← ダッシュボード</a>
+  </header>
+
+  <main>
+    <nav class="range-nav">
+      <a href="/history?range=week"{{if eq .CurrentRange "week"}} class="active"{{end}}>直近7日</a>
+      <a href="/history?range=month"{{if eq .CurrentRange "month"}} class="active"{{end}}>当月</a>
+    </nav>
+
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>日付</th>
+          {{range .Habits}}<th>{{.Name}}</th>{{end}}
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Rows}}
+        <tr>
+          <td class="date-cell">{{.Date}}</td>
+          {{$row := .}}
+          {{range $.Habits}}
+          <td>{{if index $row.DoneByHabit .ID}}○{{else}}-{{end}}</td>
+          {{end}}
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

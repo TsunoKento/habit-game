@@ -15,13 +15,19 @@ import (
 
 type Handler struct {
 	tmpl             *template.Template
+	historyTmpl      *template.Template
 	service          service.HabitService
 	habitDoneService habitDoneService
 	expService       expService
+	historyService   historyService
 }
 
 type expService interface {
 	Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
+}
+
+type historyService interface {
+	BuildHistory(ctx context.Context, rangeType string) (*model.HistoryData, error)
 }
 
 type habitDoneService interface {
@@ -38,15 +44,18 @@ func formatDate(t time.Time) string {
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
-func New(tmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService) http.Handler {
+func New(tmpl *template.Template, historyTmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService, historySvc historyService) http.Handler {
 	h := &Handler{
 		tmpl:             tmpl,
+		historyTmpl:      historyTmpl,
 		service:          svc,
 		habitDoneService: doneSvc,
 		expService:       expSvc,
+		historyService:   historySvc,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)
+	mux.HandleFunc("GET /history", h.handleHistory)
 	mux.HandleFunc("POST /habits/{id}/done", h.handleHabitDone)
 	mux.HandleFunc("POST /habits/{id}/undone", h.handleHabitUndone)
 	return mux
@@ -99,6 +108,25 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	var buf bytes.Buffer
 	if err := h.tmpl.Execute(&buf, data); err != nil {
+		log.Printf("template render error: %v", err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
+	rangeType := r.URL.Query().Get("range")
+
+	data, err := h.historyService.BuildHistory(r.Context(), rangeType)
+	if err != nil {
+		log.Printf("build history error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	var buf bytes.Buffer
+	if err := h.historyTmpl.Execute(&buf, data); err != nil {
 		log.Printf("template render error: %v", err)
 		http.Error(w, "render error", http.StatusInternalServerError)
 		return

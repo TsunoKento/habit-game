@@ -73,7 +73,7 @@ func (m *mockHabitService) FindAll(_ context.Context) ([]model.Habit, error) {
 func TestGetDashboard(t *testing.T) {
 	tmpl := template.Must(template.New("index").Parse(`<h1>Habit Growth Tracker</h1>`))
 	svc := &mockHabitService{}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
+	h := handler.New(tmpl, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -97,7 +97,7 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 			{ID: 3, Name: "運動"},
 		},
 	}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
+	h := handler.New(tmpl, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 func TestGetDashboard_Returns500WhenServiceFails(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	svc := &mockHabitService{err: errors.New("db down")}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expServiceStub{})
+	h := handler.New(tmpl, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -146,7 +146,7 @@ func TestGetDashboard_ShowsDoneStateFromService(t *testing.T) {
 			return map[int64]bool{1: true}, nil
 		},
 	}
-	h := handler.New(tmpl, svc, doneSvc, expServiceStub{})
+	h := handler.New(tmpl, nil, svc, doneSvc, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -168,12 +168,12 @@ func TestPostHabitDone_RedirectsToDashboard(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 
 	var gotHabitID int64
-	h := handler.New(tmpl, nil, habitDoneServiceStub{
+	h := handler.New(tmpl, nil, nil, habitDoneServiceStub{
 		markDoneFn: func(ctx context.Context, habitID int64) error {
 			gotHabitID = habitID
 			return nil
 		},
-	}, expServiceStub{})
+	}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/2/done", nil)
 	w := httptest.NewRecorder()
@@ -195,12 +195,12 @@ func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 
 	var gotHabitID int64
-	h := handler.New(tmpl, nil, habitDoneServiceStub{
+	h := handler.New(tmpl, nil, nil, habitDoneServiceStub{
 		markUndoneFn: func(ctx context.Context, habitID int64) error {
 			gotHabitID = habitID
 			return nil
 		},
-	}, expServiceStub{})
+	}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/3/undone", nil)
 	w := httptest.NewRecorder()
@@ -220,12 +220,12 @@ func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
 
 func TestPostHabitUndone_ReturnsBadRequestForInvalidID(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-	h := handler.New(tmpl, nil, habitDoneServiceStub{
+	h := handler.New(tmpl, nil, nil, habitDoneServiceStub{
 		markUndoneFn: func(ctx context.Context, habitID int64) error {
 			t.Fatal("MarkUndone should not be called for invalid ID")
 			return nil
 		},
-	}, expServiceStub{})
+	}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/undone", nil)
 	w := httptest.NewRecorder()
@@ -237,14 +237,162 @@ func TestPostHabitUndone_ReturnsBadRequestForInvalidID(t *testing.T) {
 	}
 }
 
+type historyServiceStub struct {
+	buildHistoryFn func(ctx context.Context, rangeType string) (*model.HistoryData, error)
+}
+
+func (s historyServiceStub) BuildHistory(ctx context.Context, rangeType string) (*model.HistoryData, error) {
+	if s.buildHistoryFn != nil {
+		return s.buildHistoryFn(ctx, rangeType)
+	}
+	return &model.HistoryData{CurrentRange: "month"}, nil
+}
+
+func TestGetHistory_RendersHistoryPage(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	historyTmpl := template.Must(template.New("history").Parse(
+		`<h1>履歴</h1>{{range .Rows}}<tr><td>{{.Date}}</td></tr>{{end}}`,
+	))
+	svc := &mockHabitService{}
+	historySvc := historyServiceStub{
+		buildHistoryFn: func(ctx context.Context, rangeType string) (*model.HistoryData, error) {
+			return &model.HistoryData{
+				Habits: []model.Habit{{ID: 1, Name: "早起き"}},
+				Rows: []model.HistoryRow{
+					{Date: "2026-04-12", DoneByHabit: map[int64]bool{1: true}},
+					{Date: "2026-04-11", DoneByHabit: map[int64]bool{}},
+				},
+				CurrentRange: "month",
+			}, nil
+		},
+	}
+	h := handler.New(indexTmpl, historyTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/history", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "履歴") {
+		t.Errorf("body does not contain '履歴': %s", body)
+	}
+	if !strings.Contains(body, "2026-04-12") {
+		t.Errorf("body does not contain '2026-04-12': %s", body)
+	}
+}
+
+func TestGetDashboard_HasHistoryLink(t *testing.T) {
+	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	svc := &mockHabitService{}
+	h := handler.New(tmpl, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "/history") {
+		t.Errorf("dashboard does not contain link to /history")
+	}
+}
+
+func TestGetHistory_RendersActualTemplate(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	historyTmpl := template.Must(template.ParseFS(templates.FS, "history.html"))
+	historySvc := historyServiceStub{
+		buildHistoryFn: func(ctx context.Context, rangeType string) (*model.HistoryData, error) {
+			return &model.HistoryData{
+				Habits: []model.Habit{
+					{ID: 1, Name: "早起き"},
+					{ID: 2, Name: "英語学習"},
+				},
+				Rows: []model.HistoryRow{
+					{Date: "2026-04-12", DoneByHabit: map[int64]bool{1: true}},
+					{Date: "2026-04-11", DoneByHabit: map[int64]bool{1: true, 2: true}},
+				},
+				CurrentRange: "month",
+			}, nil
+		},
+	}
+	h := handler.New(indexTmpl, historyTmpl, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/history", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+
+	// テーブルヘッダに習慣名
+	for _, name := range []string{"早起き", "英語学習"} {
+		if !strings.Contains(body, name) {
+			t.Errorf("body does not contain %q", name)
+		}
+	}
+	// 達成: ○、未達成: -
+	if !strings.Contains(body, "○") {
+		t.Errorf("body does not contain '○'")
+	}
+	if !strings.Contains(body, "-") {
+		t.Errorf("body does not contain '-'")
+	}
+	// 切り替えリンク
+	if !strings.Contains(body, "range=week") {
+		t.Errorf("body does not contain link to week range")
+	}
+	if !strings.Contains(body, "range=month") {
+		t.Errorf("body does not contain link to month range")
+	}
+	// ダッシュボードへの戻りリンク
+	if !strings.Contains(body, "href=\"/\"") {
+		t.Errorf("body does not contain link to dashboard")
+	}
+}
+
+func TestGetHistory_WeekRange(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	historyTmpl := template.Must(template.New("history").Parse(
+		`range={{.CurrentRange}}`,
+	))
+	var gotRange string
+	historySvc := historyServiceStub{
+		buildHistoryFn: func(ctx context.Context, rangeType string) (*model.HistoryData, error) {
+			gotRange = rangeType
+			return &model.HistoryData{CurrentRange: rangeType}, nil
+		},
+	}
+	h := handler.New(indexTmpl, historyTmpl, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/history?range=week", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Code)
+	}
+	if gotRange != "week" {
+		t.Errorf("service received range = %q, want %q", gotRange, "week")
+	}
+	if !strings.Contains(w.Body.String(), "range=week") {
+		t.Errorf("body does not contain 'range=week': %s", w.Body.String())
+	}
+}
+
 func TestPostHabitDone_ReturnsBadRequestForInvalidID(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-	h := handler.New(tmpl, nil, habitDoneServiceStub{
+	h := handler.New(tmpl, nil, nil, habitDoneServiceStub{
 		markDoneFn: func(ctx context.Context, habitID int64) error {
 			t.Fatal("MarkDone should not be called for invalid ID")
 			return nil
 		},
-	}, expServiceStub{})
+	}, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/done", nil)
 	w := httptest.NewRecorder()
@@ -275,7 +423,7 @@ func TestGetDashboard_ShowsStreak(t *testing.T) {
 			return 0, nil
 		},
 	}
-	h := handler.New(tmpl, svc, doneSvc, expServiceStub{})
+	h := handler.New(tmpl, nil, svc, doneSvc, expServiceStub{}, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -311,7 +459,7 @@ func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
 			}, nil
 		},
 	}
-	h := handler.New(tmpl, svc, habitDoneServiceStub{}, expSvc)
+	h := handler.New(tmpl, nil, svc, habitDoneServiceStub{}, expSvc, historyServiceStub{})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
