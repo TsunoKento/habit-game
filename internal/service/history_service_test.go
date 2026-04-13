@@ -150,3 +150,22 @@ func TestHistoryService_BuildHistory_DescendingOrder(t *testing.T) {
 		t.Errorf("last row = %q, want %q", data.Rows[2].Date, "2026-04-01")
 	}
 }
+
+func TestHistoryService_BuildHistory_InvalidRangeFallsBackToMonth(t *testing.T) {
+	svc := service.NewHistoryService(
+		&stubHabitFinder{habits: []model.Habit{{ID: 1, Name: "早起き"}}},
+		&stubDateRangeFinder{result: map[string]map[int64]bool{}},
+		fixedNow(2026, time.April, 5),
+	)
+
+	data, err := svc.BuildHistory(context.Background(), "invalid")
+	if err != nil {
+		t.Fatalf("BuildHistory: %v", err)
+	}
+	if data.CurrentRange != "month" {
+		t.Errorf("CurrentRange = %q, want %q", data.CurrentRange, "month")
+	}
+	if len(data.Rows) != 5 {
+		t.Fatalf("expected 5 rows (month 4/1-4/5), got %d", len(data.Rows))
+	}
+}

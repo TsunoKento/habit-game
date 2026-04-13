@@ -385,6 +385,39 @@ func TestGetHistory_WeekRange(t *testing.T) {
 	}
 }
 
+func TestGetHistory_Returns500WhenServiceFails(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	historyTmpl := template.Must(template.New("history").Parse(`ok`))
+	historySvc := historyServiceStub{
+		buildHistoryFn: func(ctx context.Context, rangeType string) (*model.HistoryData, error) {
+			return nil, errors.New("db down")
+		},
+	}
+	h := handler.New(indexTmpl, historyTmpl, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+
+	req := httptest.NewRequest(http.MethodGet, "/history", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
+func TestGetHistory_Returns500WhenTemplateFails(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	historyTmpl := template.Must(template.New("history").Parse(`{{.NotExisting.Field}}`))
+	h := handler.New(indexTmpl, historyTmpl, nil, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+
+	req := httptest.NewRequest(http.MethodGet, "/history", nil)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d", w.Code)
+	}
+}
+
 func TestPostHabitDone_ReturnsBadRequestForInvalidID(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	h := handler.New(tmpl, nil, nil, habitDoneServiceStub{
