@@ -3,6 +3,7 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"html/template"
 	"log"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 type Handler struct {
 	tmpl             *template.Template
 	historyTmpl      *template.Template
+	settingsTmpl     *template.Template
 	service          service.HabitService
 	habitDoneService habitDoneService
 	expService       expService
@@ -44,10 +46,11 @@ func formatDate(t time.Time) string {
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
-func New(tmpl *template.Template, historyTmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService, historySvc historyService) http.Handler {
+func New(tmpl *template.Template, historyTmpl *template.Template, settingsTmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService, historySvc historyService) http.Handler {
 	h := &Handler{
 		tmpl:             tmpl,
 		historyTmpl:      historyTmpl,
+		settingsTmpl:     settingsTmpl,
 		service:          svc,
 		habitDoneService: doneSvc,
 		expService:       expSvc,
@@ -56,9 +59,80 @@ func New(tmpl *template.Template, historyTmpl *template.Template, svc service.Ha
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)
 	mux.HandleFunc("GET /history", h.handleHistory)
+	mux.HandleFunc("GET /settings", h.handleSettings)
+	mux.HandleFunc("POST /settings", h.handleUpdateSettings)
 	mux.HandleFunc("POST /habits/{id}/done", h.handleHabitDone)
 	mux.HandleFunc("POST /habits/{id}/undone", h.handleHabitUndone)
 	return mux
+}
+
+func (h *Handler) handleSettings(w http.ResponseWriter, r *http.Request) {
+	habits, err := h.service.FindAll(r.Context())
+	if err != nil {
+		log.Printf("find habits error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	data := model.NewSettingsData(habits, nil, "")
+
+	var buf bytes.Buffer
+	if err := h.settingsTmpl.Execute(&buf, data); err != nil {
+		log.Printf("template render error: %v", err)
+		http.Error(w, "render error", http.StatusInternalServerError)
+		return
+	}
+	buf.WriteTo(w)
+}
+
+func (h *Handler) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form data", http.StatusBadRequest)
+		return
+	}
+
+	habits, err := h.service.FindAll(r.Context())
+	if err != nil {
+		log.Printf("find habits error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	updates := make(map[int64]int, len(habits))
+	for _, hab := range habits {
+		key := "exp_" + strconv.FormatInt(hab.ID, 10)
+		val, err := strconv.Atoi(r.FormValue(key))
+		if err != nil {
+			http.Error(w, "invalid exp value", http.StatusBadRequest)
+			return
+		}
+		updates[hab.ID] = val
+	}
+
+	if err := h.service.UpdateExpPerDone(r.Context(), updates); err != nil {
+		var errMsg string
+		if errors.Is(err, service.ErrExpSumInvalid) {
+			errMsg = "基本経験値の合計は100にしてください"
+		} else if errors.Is(err, service.ErrExpValueInvalid) {
+			errMsg = "各基本経験値は1以上にしてください"
+		}
+		if errMsg != "" {
+			data := model.NewSettingsData(habits, updates, errMsg)
+			var buf bytes.Buffer
+			if err := h.settingsTmpl.Execute(&buf, data); err != nil {
+				log.Printf("template render error: %v", err)
+				http.Error(w, "render error", http.StatusInternalServerError)
+				return
+			}
+			buf.WriteTo(w)
+			return
+		}
+		log.Printf("update settings error: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }
 
 func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {

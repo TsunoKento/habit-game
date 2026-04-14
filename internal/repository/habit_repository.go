@@ -10,6 +10,7 @@ import (
 
 type HabitRepository interface {
 	FindAll(ctx context.Context) ([]model.Habit, error)
+	UpdateExpPerDone(ctx context.Context, updates map[int64]int) error
 }
 
 type SQLiteHabitRepository struct {
@@ -18,6 +19,31 @@ type SQLiteHabitRepository struct {
 
 func NewSQLiteHabitRepository(db *sql.DB) *SQLiteHabitRepository {
 	return &SQLiteHabitRepository{db: db}
+}
+
+func (r *SQLiteHabitRepository) UpdateExpPerDone(ctx context.Context, updates map[int64]int) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, `UPDATE habits SET exp_per_done = ? WHERE id = ?`)
+	if err != nil {
+		return fmt.Errorf("prepare update: %w", err)
+	}
+	defer stmt.Close()
+
+	for id, exp := range updates {
+		if _, err := stmt.ExecContext(ctx, exp, id); err != nil {
+			return fmt.Errorf("update habit %d: %w", id, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+	return nil
 }
 
 func (r *SQLiteHabitRepository) FindAll(ctx context.Context) ([]model.Habit, error) {
