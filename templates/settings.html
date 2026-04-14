@@ -126,8 +126,8 @@
     <form method="post" action="/settings">
       {{range .Habits}}
       <div class="habit-exp-item">
-        <span class="habit-exp-name">{{.Name}}</span>
-        <input class="habit-exp-input" type="number" name="exp_{{.ID}}" value="{{.ExpPerDone}}" min="1">
+        <label class="habit-exp-name" for="exp_{{.ID}}">{{.Name}}</label>
+        <input id="exp_{{.ID}}" class="habit-exp-input" type="number" name="exp_{{.ID}}" value="{{.ExpPerDone}}" min="1">
       </div>
       {{end}}
       <div class="total-row">

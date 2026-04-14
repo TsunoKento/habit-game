@@ -79,6 +79,23 @@ func TestHabitService_UpdateExpPerDone_NegativeValue(t *testing.T) {
 	}
 }
 
+func TestHabitService_UpdateExpPerDone_ZeroValue(t *testing.T) {
+	repo := &stubHabitRepository{}
+	svc := service.NewHabitService(repo)
+
+	updates := map[int64]int{1: 0, 2: 50, 3: 50}
+	err := svc.UpdateExpPerDone(context.Background(), updates)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !errors.Is(err, service.ErrExpValueInvalid) {
+		t.Fatalf("expected ErrExpValueInvalid, got %v", err)
+	}
+	if repo.updatedExp != nil {
+		t.Fatal("repository should not be called when validation fails")
+	}
+}
+
 func TestHabitService_FindAll(t *testing.T) {
 	repo := &stubHabitRepository{
 		habits: []model.Habit{

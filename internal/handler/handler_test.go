@@ -183,6 +183,37 @@ func TestPostSettings_ValidationError(t *testing.T) {
 	}
 }
 
+func TestPostSettings_ValueValidationError(t *testing.T) {
+	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
+	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
+	svc := &mockHabitService{
+		habits: []model.Habit{
+			{ID: 1, Name: "早起き", ExpPerDone: 33},
+			{ID: 2, Name: "英語学習", ExpPerDone: 33},
+			{ID: 3, Name: "運動", ExpPerDone: 34},
+		},
+		updateExpFn: func(ctx context.Context, updates map[int64]int) error {
+			return service.ErrExpValueInvalid
+		},
+	}
+	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+
+	form := strings.NewReader("exp_1=0&exp_2=50&exp_3=50")
+	req := httptest.NewRequest(http.MethodPost, "/settings", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", w.Result().StatusCode)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "各基本経験値は1以上にしてください") {
+		t.Errorf("body does not contain validation error message: %s", body)
+	}
+}
+
 func TestPostSettings_UpdatesExpPerDone(t *testing.T) {
 	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))

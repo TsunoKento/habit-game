@@ -75,9 +75,16 @@ func TestSQLiteHabitRepository_UpdateExpPerDone(t *testing.T) {
 	}
 
 	want := map[int64]int{1: 50, 2: 30, 3: 20}
+	if len(habits) != len(want) {
+		t.Fatalf("unexpected habit count: got %d, want %d", len(habits), len(want))
+	}
 	for _, h := range habits {
-		if h.ExpPerDone != want[h.ID] {
-			t.Errorf("habit %d: ExpPerDone = %d, want %d", h.ID, h.ExpPerDone, want[h.ID])
+		expected, ok := want[h.ID]
+		if !ok {
+			t.Fatalf("unexpected habit id: %d", h.ID)
+		}
+		if h.ExpPerDone != expected {
+			t.Errorf("habit %d: ExpPerDone = %d, want %d", h.ID, h.ExpPerDone, expected)
 		}
 	}
 }
