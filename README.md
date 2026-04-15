@@ -1,24 +1,67 @@
-# habit-game
+# Habit Growth Tracker
 
-習慣をゲーム感覚で継続・可視化するための個人用 Web アプリ。
+習慣の達成を毎日記録し、経験値・レベル・連続日数でゲーム感覚に可視化する Web アプリ。
 
-## 起動手順（Docker Compose）
+## スクリーンショット
 
-```bash
-# 開発サーバを起動
-docker compose up
+### ダッシュボード
 
-# バックグラウンドで起動
-docker compose up -d
+![ダッシュボード](docs/images/dashboard.png)
 
-# 停止
-docker compose down
+### 履歴
+
+![履歴](docs/images/history.png)
+
+### 設定
+
+![設定](docs/images/settings.png)
+
+## 技術スタック
+
+| カテゴリ | 技術 |
+|---------|------|
+| 言語 | Go |
+| Web サーバ | net/http（標準ライブラリ） |
+| テンプレート | html/template |
+| DB | SQLite |
+| DB アクセス | database/sql |
+| フロントエンド | HTML / CSS |
+| コンテナ | Docker（マルチステージビルド） |
+
+## アーキテクチャ
+
+handler → service → repository のレイヤードアーキテクチャを採用。各層はインターフェースで結合し、テスタビリティを確保している。
+
+```text
+habit-game/
+├── cmd/app/main.go          # エントリポイント
+├── internal/
+│   ├── handler/             # HTTP ハンドラ（ルーティング・リクエスト処理）
+│   ├── service/             # ビジネスロジック（EXP計算・ストリーク算出）
+│   ├── repository/          # DB アクセス（SQLite操作）
+│   ├── model/               # データ構造
+│   └── db/                  # DB 接続・マイグレーション
+├── templates/               # HTML テンプレート
+├── migrations/              # SQL マイグレーションファイル
+├── Dockerfile
+└── docker-compose.yml
 ```
 
-起動後、ブラウザで http://localhost:8080 にアクセス。
-
-## テスト実行
+## セットアップ
 
 ```bash
-docker compose run --rm dev go test ./...
+# 開発サーバを起動（ホットリロード対応）
+docker compose --profile dev up watch
+
+# ブラウザで http://localhost:8080 にアクセス
+```
+
+## テスト
+
+```bash
+# 全テスト実行
+go test ./...
+
+# カバレッジ確認
+go test -cover ./...
 ```
