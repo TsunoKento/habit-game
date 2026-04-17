@@ -19,24 +19,34 @@ type Handler struct {
 	historyTmpl      *template.Template
 	settingsTmpl     *template.Template
 	service          service.HabitService
-	habitDoneService habitDoneService
-	expService       expService
-	historyService   historyService
+	habitDoneService HabitDoneService
+	expService       ExpService
+	historyService   HistoryService
 }
 
-type expService interface {
+type ExpService interface {
 	Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
 }
 
-type historyService interface {
+type HistoryService interface {
 	BuildHistory(ctx context.Context, rangeType string) (*model.HistoryData, error)
 }
 
-type habitDoneService interface {
+type HabitDoneService interface {
 	MarkDone(ctx context.Context, habitID int64) error
 	MarkUndone(ctx context.Context, habitID int64) error
 	DoneHabitIDs(ctx context.Context) (map[int64]bool, error)
 	Streak(ctx context.Context, habitID int64) (int, error)
+}
+
+type Deps struct {
+	Tmpl           *template.Template
+	HistoryTmpl    *template.Template
+	SettingsTmpl   *template.Template
+	Service        service.HabitService
+	DoneService    HabitDoneService
+	ExpService     ExpService
+	HistoryService HistoryService
 }
 
 var weekdays = [7]string{"日", "月", "火", "水", "木", "金", "土"}
@@ -46,15 +56,15 @@ func formatDate(t time.Time) string {
 	return t.Format("2006年01月02日") + "(" + weekdays[t.Weekday()] + ")"
 }
 
-func New(tmpl *template.Template, historyTmpl *template.Template, settingsTmpl *template.Template, svc service.HabitService, doneSvc habitDoneService, expSvc expService, historySvc historyService) http.Handler {
+func New(d Deps) http.Handler {
 	h := &Handler{
-		tmpl:             tmpl,
-		historyTmpl:      historyTmpl,
-		settingsTmpl:     settingsTmpl,
-		service:          svc,
-		habitDoneService: doneSvc,
-		expService:       expSvc,
-		historyService:   historySvc,
+		tmpl:             d.Tmpl,
+		historyTmpl:      d.HistoryTmpl,
+		settingsTmpl:     d.SettingsTmpl,
+		service:          d.Service,
+		habitDoneService: d.DoneService,
+		expService:       d.ExpService,
+		historyService:   d.HistoryService,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /", h.handleDashboard)

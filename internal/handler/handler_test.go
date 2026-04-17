@@ -88,7 +88,13 @@ func TestGetSettings_ShowsHabitExpPerDone(t *testing.T) {
 			{ID: 3, Name: "運動", ExpPerDone: 34},
 		},
 	}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	w := httptest.NewRecorder()
@@ -113,7 +119,13 @@ func TestGetSettings_Returns500WhenServiceFails(t *testing.T) {
 	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	settingsTmpl := template.Must(template.ParseFS(templates.FS, "settings.html"))
 	svc := &mockHabitService{err: errors.New("db down")}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
 	w := httptest.NewRecorder()
@@ -138,7 +150,13 @@ func TestPostSettings_Returns500WhenServiceFails(t *testing.T) {
 			return errors.New("db down")
 		},
 	}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	form := strings.NewReader("exp_1=50&exp_2=30&exp_3=20")
 	req := httptest.NewRequest(http.MethodPost, "/settings", form)
@@ -165,7 +183,13 @@ func TestPostSettings_ValidationError(t *testing.T) {
 			return service.ErrExpSumInvalid
 		},
 	}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	form := strings.NewReader("exp_1=50&exp_2=30&exp_3=10")
 	req := httptest.NewRequest(http.MethodPost, "/settings", form)
@@ -196,7 +220,13 @@ func TestPostSettings_ValueValidationError(t *testing.T) {
 			return service.ErrExpValueInvalid
 		},
 	}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	form := strings.NewReader("exp_1=0&exp_2=50&exp_3=50")
 	req := httptest.NewRequest(http.MethodPost, "/settings", form)
@@ -229,7 +259,13 @@ func TestPostSettings_UpdatesExpPerDone(t *testing.T) {
 			return nil
 		},
 	}
-	h := handler.New(indexTmpl, nil, settingsTmpl, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:         indexTmpl,
+		SettingsTmpl: settingsTmpl,
+		Service:      svc,
+		DoneService:  habitDoneServiceStub{},
+		ExpService:   expServiceStub{},
+	})
 
 	form := strings.NewReader("exp_1=50&exp_2=30&exp_3=20")
 	req := httptest.NewRequest(http.MethodPost, "/settings", form)
@@ -255,7 +291,12 @@ func TestPostSettings_UpdatesExpPerDone(t *testing.T) {
 func TestGetDashboard_HasSettingsLink(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	svc := &mockHabitService{}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -274,7 +315,12 @@ func TestGetDashboard_HasSettingsLink(t *testing.T) {
 func TestGetDashboard(t *testing.T) {
 	tmpl := template.Must(template.New("index").Parse(`<h1>Habit Growth Tracker</h1>`))
 	svc := &mockHabitService{}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -298,7 +344,12 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 			{ID: 3, Name: "運動"},
 		},
 	}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -319,7 +370,12 @@ func TestGetDashboard_RendersHabitCards(t *testing.T) {
 func TestGetDashboard_Returns500WhenServiceFails(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	svc := &mockHabitService{err: errors.New("db down")}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -347,7 +403,12 @@ func TestGetDashboard_ShowsDoneStateFromService(t *testing.T) {
 			return map[int64]bool{1: true}, nil
 		},
 	}
-	h := handler.New(tmpl, nil, nil, svc, doneSvc, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: doneSvc,
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -366,15 +427,15 @@ func TestGetDashboard_ShowsDoneStateFromService(t *testing.T) {
 }
 
 func TestPostHabitDone_RedirectsToDashboard(t *testing.T) {
-	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-
 	var gotHabitID int64
-	h := handler.New(tmpl, nil, nil, nil, habitDoneServiceStub{
-		markDoneFn: func(ctx context.Context, habitID int64) error {
-			gotHabitID = habitID
-			return nil
+	h := handler.New(handler.Deps{
+		DoneService: habitDoneServiceStub{
+			markDoneFn: func(ctx context.Context, habitID int64) error {
+				gotHabitID = habitID
+				return nil
+			},
 		},
-	}, expServiceStub{}, historyServiceStub{})
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/2/done", nil)
 	w := httptest.NewRecorder()
@@ -393,15 +454,15 @@ func TestPostHabitDone_RedirectsToDashboard(t *testing.T) {
 }
 
 func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
-	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-
 	var gotHabitID int64
-	h := handler.New(tmpl, nil, nil, nil, habitDoneServiceStub{
-		markUndoneFn: func(ctx context.Context, habitID int64) error {
-			gotHabitID = habitID
-			return nil
+	h := handler.New(handler.Deps{
+		DoneService: habitDoneServiceStub{
+			markUndoneFn: func(ctx context.Context, habitID int64) error {
+				gotHabitID = habitID
+				return nil
+			},
 		},
-	}, expServiceStub{}, historyServiceStub{})
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/3/undone", nil)
 	w := httptest.NewRecorder()
@@ -420,13 +481,14 @@ func TestPostHabitUndone_RedirectsToDashboard(t *testing.T) {
 }
 
 func TestPostHabitUndone_ReturnsBadRequestForInvalidID(t *testing.T) {
-	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-	h := handler.New(tmpl, nil, nil, nil, habitDoneServiceStub{
-		markUndoneFn: func(ctx context.Context, habitID int64) error {
-			t.Fatal("MarkUndone should not be called for invalid ID")
-			return nil
+	h := handler.New(handler.Deps{
+		DoneService: habitDoneServiceStub{
+			markUndoneFn: func(ctx context.Context, habitID int64) error {
+				t.Fatal("MarkUndone should not be called for invalid ID")
+				return nil
+			},
 		},
-	}, expServiceStub{}, historyServiceStub{})
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/undone", nil)
 	w := httptest.NewRecorder()
@@ -467,7 +529,14 @@ func TestGetHistory_RendersHistoryPage(t *testing.T) {
 			}, nil
 		},
 	}
-	h := handler.New(indexTmpl, historyTmpl, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		Service:        svc,
+		DoneService:    habitDoneServiceStub{},
+		ExpService:     expServiceStub{},
+		HistoryService: historySvc,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/history", nil)
 	w := httptest.NewRecorder()
@@ -488,7 +557,12 @@ func TestGetHistory_RendersHistoryPage(t *testing.T) {
 func TestGetDashboard_HasHistoryLink(t *testing.T) {
 	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	svc := &mockHabitService{}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -520,7 +594,13 @@ func TestGetHistory_RendersActualTemplate(t *testing.T) {
 			}, nil
 		},
 	}
-	h := handler.New(indexTmpl, historyTmpl, nil, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		DoneService:    habitDoneServiceStub{},
+		ExpService:     expServiceStub{},
+		HistoryService: historySvc,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/history", nil)
 	w := httptest.NewRecorder()
@@ -569,7 +649,13 @@ func TestGetHistory_WeekRange(t *testing.T) {
 			return &model.HistoryData{CurrentRange: rangeType}, nil
 		},
 	}
-	h := handler.New(indexTmpl, historyTmpl, nil, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		DoneService:    habitDoneServiceStub{},
+		ExpService:     expServiceStub{},
+		HistoryService: historySvc,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/history?range=week", nil)
 	w := httptest.NewRecorder()
@@ -594,7 +680,13 @@ func TestGetHistory_Returns500WhenServiceFails(t *testing.T) {
 			return nil, errors.New("db down")
 		},
 	}
-	h := handler.New(indexTmpl, historyTmpl, nil, nil, habitDoneServiceStub{}, expServiceStub{}, historySvc)
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		DoneService:    habitDoneServiceStub{},
+		ExpService:     expServiceStub{},
+		HistoryService: historySvc,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/history", nil)
 	w := httptest.NewRecorder()
@@ -608,7 +700,13 @@ func TestGetHistory_Returns500WhenServiceFails(t *testing.T) {
 func TestGetHistory_Returns500WhenTemplateFails(t *testing.T) {
 	indexTmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
 	historyTmpl := template.Must(template.New("history").Parse(`{{.NotExisting.Field}}`))
-	h := handler.New(indexTmpl, historyTmpl, nil, nil, habitDoneServiceStub{}, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		DoneService:    habitDoneServiceStub{},
+		ExpService:     expServiceStub{},
+		HistoryService: historyServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/history", nil)
 	w := httptest.NewRecorder()
@@ -620,13 +718,14 @@ func TestGetHistory_Returns500WhenTemplateFails(t *testing.T) {
 }
 
 func TestPostHabitDone_ReturnsBadRequestForInvalidID(t *testing.T) {
-	tmpl := template.Must(template.ParseFS(templates.FS, "index.html"))
-	h := handler.New(tmpl, nil, nil, nil, habitDoneServiceStub{
-		markDoneFn: func(ctx context.Context, habitID int64) error {
-			t.Fatal("MarkDone should not be called for invalid ID")
-			return nil
+	h := handler.New(handler.Deps{
+		DoneService: habitDoneServiceStub{
+			markDoneFn: func(ctx context.Context, habitID int64) error {
+				t.Fatal("MarkDone should not be called for invalid ID")
+				return nil
+			},
 		},
-	}, expServiceStub{}, historyServiceStub{})
+	})
 
 	req := httptest.NewRequest(http.MethodPost, "/habits/not-a-number/done", nil)
 	w := httptest.NewRecorder()
@@ -657,7 +756,12 @@ func TestGetDashboard_ShowsStreak(t *testing.T) {
 			return 0, nil
 		},
 	}
-	h := handler.New(tmpl, nil, nil, svc, doneSvc, expServiceStub{}, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: doneSvc,
+		ExpService:  expServiceStub{},
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
@@ -692,7 +796,12 @@ func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
 			}, nil
 		},
 	}
-	h := handler.New(tmpl, nil, nil, svc, habitDoneServiceStub{}, expSvc, historyServiceStub{})
+	h := handler.New(handler.Deps{
+		Tmpl:        tmpl,
+		Service:     svc,
+		DoneService: habitDoneServiceStub{},
+		ExpService:  expSvc,
+	})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
