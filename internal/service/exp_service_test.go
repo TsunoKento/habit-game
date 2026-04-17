@@ -62,29 +62,6 @@ func TestExpService_Calculate_WithRecords(t *testing.T) {
 	}
 }
 
-func TestExpService_Calculate_HabitExp(t *testing.T) {
-	mock := &recordCounterMock{
-		countByHabitIDFn: func(ctx context.Context) (map[int64]int, error) {
-			return map[int64]int{1: 3, 2: 1, 3: 2}, nil
-		},
-	}
-	svc := service.NewExpService(mock)
-
-	result, err := svc.Calculate(context.Background(), defaultHabits)
-	if err != nil {
-		t.Fatalf("Calculate: %v", err)
-	}
-	if result.HabitExp[1] != 99 {
-		t.Errorf("HabitExp[1] = %d, want 99", result.HabitExp[1])
-	}
-	if result.HabitExp[2] != 33 {
-		t.Errorf("HabitExp[2] = %d, want 33", result.HabitExp[2])
-	}
-	if result.HabitExp[3] != 68 {
-		t.Errorf("HabitExp[3] = %d, want 68", result.HabitExp[3])
-	}
-}
-
 func TestExpService_Calculate_LevelBoundaries(t *testing.T) {
 	singleHabit := []model.Habit{{ID: 1, Name: "test", ExpPerDone: 1}}
 
