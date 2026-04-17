@@ -58,7 +58,7 @@ func (s expServiceStub) Calculate(ctx context.Context, habits []model.Habit) (*s
 	if s.calculateFn != nil {
 		return s.calculateFn(ctx, habits)
 	}
-	return &service.ExpResult{Level: 1, HabitExp: map[int64]int{}}, nil
+	return &service.ExpResult{Level: 1}, nil
 }
 
 type mockHabitService struct {
@@ -689,7 +689,6 @@ func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
 			return &service.ExpResult{
 				TotalExp: 200,
 				Level:    3,
-				HabitExp: map[int64]int{1: 99, 2: 33, 3: 68},
 			}, nil
 		},
 	}
@@ -709,7 +708,7 @@ func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
 	if !strings.Contains(body, "200 EXP") {
 		t.Errorf("body does not contain '200 EXP'")
 	}
-	if !strings.Contains(body, "99 EXP") {
-		t.Errorf("body does not contain '99 EXP' for habit 1")
+	if got := strings.Count(body, " EXP"); got != 1 {
+		t.Errorf("body should contain exactly 1 EXP display (header only), got %d", got)
 	}
 }

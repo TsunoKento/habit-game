@@ -166,11 +166,10 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		cards[i] = model.HabitCard{
-			ID:       hab.ID,
-			Name:     hab.Name,
-			Done:     doneIDs[hab.ID],
-			TotalExp: expResult.HabitExp[hab.ID],
-			Streak:   streak,
+			ID:     hab.ID,
+			Name:   hab.Name,
+			Done:   doneIDs[hab.ID],
+			Streak: streak,
 		}
 	}
 
