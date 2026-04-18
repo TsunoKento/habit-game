@@ -38,7 +38,15 @@ func main() {
 	expService := service.NewExpService(dailyRecordRepo)
 	historyService := service.NewHistoryService(habitService, dailyRecordRepo, nil)
 
-	h := handler.New(indexTmpl, historyTmpl, settingsTmpl, habitService, habitDoneService, expService, historyService)
+	h := handler.New(handler.Deps{
+		Tmpl:           indexTmpl,
+		HistoryTmpl:    historyTmpl,
+		SettingsTmpl:   settingsTmpl,
+		Service:        habitService,
+		DoneService:    habitDoneService,
+		ExpService:     expService,
+		HistoryService: historyService,
+	})
 
 	addr := ":8080"
 	log.Printf("starting server on %s", addr)
