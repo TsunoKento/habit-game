@@ -3,3 +3,4 @@ data/
 tmp/
 .env
 .playwright-cli/
+.DS_Store
