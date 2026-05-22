@@ -2,10 +2,10 @@
 
 ## 総合経験値
 
-全習慣の達成記録から動的に算出する。DBには保存しない。
+全達成記録の `exp_earned` を合計して算出する。`exp_earned` は達成時点の `habits.exp_per_done` を凍結した値であり、後から基本経験値を変更しても過去分は変動しない。
 
 ```text
-Total EXP = SUM(達成回数_i × exp_per_done_i)
+Total EXP = SUM(daily_records.exp_earned)
 ```
 
 各習慣の `exp_per_done` の合計は 100 とする。これにより、全習慣を1日すべて達成すると 100 EXP を獲得する。

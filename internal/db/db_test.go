@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"io/fs"
 	"testing"
 	"testing/fstest"
 
@@ -155,6 +156,64 @@ func TestOpen_SeedNotDuplicated(t *testing.T) {
 	}
 	if count != 3 {
 		t.Errorf("expected 3 habits after double Open, got %d", count)
+	}
+}
+
+func TestOpen_Migration004_BackfillsExpEarned(t *testing.T) {
+	// マイグレーション 001-003 のみで開き、旧スキーマ相当の daily_records を投入する。
+	preFS := fstest.MapFS{}
+	for _, name := range []string{
+		"001_initial_schema.sql",
+		"002_seed_habits.sql",
+		"003_update_exp_per_done.sql",
+	} {
+		data, err := fs.ReadFile(migrations.FS, name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		preFS[name] = &fstest.MapFile{Data: data}
+	}
+
+	const dsn = "file:testmig004?mode=memory&cache=shared"
+
+	conn1, err := db.Open(dsn, preFS)
+	if err != nil {
+		t.Fatalf("first Open (pre-004): %v", err)
+	}
+	defer conn1.Close()
+
+	// 旧スキーマでは exp_earned カラムが無いため、明示的に列を指定して投入する。
+	if _, err := conn1.Exec(`INSERT INTO daily_records (habit_id, date) VALUES (1, '2026-01-01'), (3, '2026-01-02')`); err != nil {
+		t.Fatalf("insert pre-data: %v", err)
+	}
+
+	// 全マイグレーション (004 含む) を適用して再オープン → backfill が走る。
+	conn2, err := db.Open(dsn, migrations.FS)
+	if err != nil {
+		t.Fatalf("second Open (with 004): %v", err)
+	}
+	defer conn2.Close()
+
+	rows, err := conn2.Query(`SELECT habit_id, exp_earned FROM daily_records ORDER BY habit_id`)
+	if err != nil {
+		t.Fatalf("query daily_records: %v", err)
+	}
+	defer rows.Close()
+
+	got := map[int64]int{}
+	for rows.Next() {
+		var habitID int64
+		var exp int
+		if err := rows.Scan(&habitID, &exp); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got[habitID] = exp
+	}
+	if got[1] != 33 {
+		t.Errorf("backfill: habit 1 exp_earned = %d, want 33", got[1])
+	}
+	if got[3] != 34 {
+		t.Errorf("backfill: habit 3 exp_earned = %d, want 34", got[3])
 	}
 }
 

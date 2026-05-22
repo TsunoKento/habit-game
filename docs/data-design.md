@@ -22,6 +22,7 @@
 | id | INTEGER | 主キー |
 | habit_id | INTEGER | habits.id への参照 |
 | date | DATE | 達成した対象日 |
+| exp_earned | INTEGER | 達成時点の `habits.exp_per_done` のスナップショット |
 | created_at | DATETIME | 作成日時 |
 
 ### 制約
@@ -33,3 +34,4 @@
 
 - `done` カラムは持たない。レコードの存在そのものが達成を意味する
 - レコードが存在しない日は未達成とみなして計算する
+- `exp_earned` は達成時点の基本経験値を凍結するため、後から `habits.exp_per_done` を変更しても過去の獲得経験値は変動しない

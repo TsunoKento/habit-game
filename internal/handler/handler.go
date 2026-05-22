@@ -25,7 +25,7 @@ type Handler struct {
 }
 
 type ExpService interface {
-	Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
+	Calculate(ctx context.Context) (*service.ExpResult, error)
 }
 
 type HistoryService interface {
@@ -160,7 +160,7 @@ func (h *Handler) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expResult, err := h.expService.Calculate(r.Context(), habits)
+	expResult, err := h.expService.Calculate(r.Context())
 	if err != nil {
 		log.Printf("calculate exp error: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
