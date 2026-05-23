@@ -130,62 +130,6 @@ func TestDailyRecordRepository_FindDatesByHabitID_Empty(t *testing.T) {
 	}
 }
 
-func TestDailyRecordRepository_CountByHabitID(t *testing.T) {
-	conn, err := db.Open(":memory:", migrations.FS)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
-
-	repo := repository.NewDailyRecord(conn)
-	ctx := context.Background()
-
-	// habit 1: 3 records
-	for _, date := range []string{"2026-04-05", "2026-04-06", "2026-04-07"} {
-		if err := repo.Create(ctx, 1, date); err != nil {
-			t.Fatalf("Create habit 1 (%s): %v", date, err)
-		}
-	}
-	// habit 2: 1 record
-	if err := repo.Create(ctx, 2, "2026-04-07"); err != nil {
-		t.Fatalf("Create habit 2 (2026-04-07): %v", err)
-	}
-	// habit 3: 0 records
-
-	counts, err := repo.CountByHabitID(ctx)
-	if err != nil {
-		t.Fatalf("CountByHabitID: %v", err)
-	}
-	if counts[1] != 3 {
-		t.Errorf("habit 1 count = %d, want 3", counts[1])
-	}
-	if counts[2] != 1 {
-		t.Errorf("habit 2 count = %d, want 1", counts[2])
-	}
-	if counts[3] != 0 {
-		t.Errorf("habit 3 count = %d, want 0", counts[3])
-	}
-}
-
-func TestDailyRecordRepository_CountByHabitID_Empty(t *testing.T) {
-	conn, err := db.Open(":memory:", migrations.FS)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	defer conn.Close()
-
-	repo := repository.NewDailyRecord(conn)
-	ctx := context.Background()
-
-	counts, err := repo.CountByHabitID(ctx)
-	if err != nil {
-		t.Fatalf("CountByHabitID: %v", err)
-	}
-	if len(counts) != 0 {
-		t.Errorf("expected empty map, got %v", counts)
-	}
-}
-
 func TestDailyRecordRepository_FindByDateRange(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {
@@ -252,6 +196,112 @@ func TestDailyRecordRepository_FindByDateRange_Empty(t *testing.T) {
 	}
 }
 
+func TestDailyRecordRepository_Create_SnapshotsExpPerDone(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	// seed habit 1 has exp_per_done = 33 (from initial migrations)
+	if err := repo.Create(ctx, 1, "2026-05-01"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	var got int
+	if err := conn.QueryRowContext(ctx,
+		`SELECT exp_earned FROM daily_records WHERE habit_id = ? AND date = ?`,
+		1, "2026-05-01",
+	).Scan(&got); err != nil {
+		t.Fatalf("query exp_earned: %v", err)
+	}
+	if got != 33 {
+		t.Fatalf("exp_earned = %d, want 33 (habit 1's current exp_per_done)", got)
+	}
+}
+
+func TestDailyRecordRepository_Create_ExpEarnedNotAffectedByLaterUpdate(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	dailyRepo := repository.NewDailyRecord(conn)
+	habitRepo := repository.NewSQLiteHabitRepository(conn)
+	ctx := context.Background()
+
+	// habit 1 の現在の exp_per_done=33 で達成記録を作成
+	if err := dailyRepo.Create(ctx, 1, "2026-05-01"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	// habit 1 の exp_per_done を 50 に変更（残りも合計100に調整）
+	if err := habitRepo.UpdateExpPerDone(ctx, map[int64]int{1: 50, 2: 25, 3: 25}); err != nil {
+		t.Fatalf("UpdateExpPerDone: %v", err)
+	}
+
+	var got int
+	if err := conn.QueryRowContext(ctx,
+		`SELECT exp_earned FROM daily_records WHERE habit_id = ? AND date = ?`,
+		1, "2026-05-01",
+	).Scan(&got); err != nil {
+		t.Fatalf("query exp_earned: %v", err)
+	}
+	if got != 33 {
+		t.Fatalf("exp_earned = %d, want 33 (snapshot must not be affected by later UpdateExpPerDone)", got)
+	}
+}
+
+func TestDailyRecordRepository_SumExpEarned(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	ctx := context.Background()
+
+	// habit 1 (exp 33) x 2 days, habit 3 (exp 34) x 1 day → 33*2 + 34 = 100
+	for _, d := range []string{"2026-04-05", "2026-04-06"} {
+		if err := repo.Create(ctx, 1, d); err != nil {
+			t.Fatalf("Create habit 1 %s: %v", d, err)
+		}
+	}
+	if err := repo.Create(ctx, 3, "2026-04-06"); err != nil {
+		t.Fatalf("Create habit 3: %v", err)
+	}
+
+	got, err := repo.SumExpEarned(ctx)
+	if err != nil {
+		t.Fatalf("SumExpEarned: %v", err)
+	}
+	if got != 100 {
+		t.Fatalf("SumExpEarned = %d, want 100", got)
+	}
+}
+
+func TestDailyRecordRepository_SumExpEarned_Empty(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	got, err := repo.SumExpEarned(context.Background())
+	if err != nil {
+		t.Fatalf("SumExpEarned: %v", err)
+	}
+	if got != 0 {
+		t.Fatalf("SumExpEarned = %d, want 0", got)
+	}
+}
+
 func TestDailyRecordRepository_CreateIsIdempotent(t *testing.T) {
 	conn, err := db.Open(":memory:", migrations.FS)
 	if err != nil {
@@ -269,5 +319,18 @@ func TestDailyRecordRepository_CreateIsIdempotent(t *testing.T) {
 
 	if err := repo.Create(ctx, 1, date); err != nil {
 		t.Fatalf("duplicate Create should not return error: %v", err)
+	}
+}
+
+func TestDailyRecordRepository_Create_ReturnsErrorForUnknownHabit(t *testing.T) {
+	conn, err := db.Open(":memory:", migrations.FS)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer conn.Close()
+
+	repo := repository.NewDailyRecord(conn)
+	if err := repo.Create(context.Background(), 999, "2026-05-01"); err == nil {
+		t.Fatal("expected error for unknown habit_id, got nil")
 	}
 }

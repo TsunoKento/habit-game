@@ -3,20 +3,18 @@ package service
 import (
 	"context"
 	"fmt"
-
-	"habit-game/internal/model"
 )
 
-type recordCounter interface {
-	CountByHabitID(ctx context.Context) (map[int64]int, error)
+type expSummer interface {
+	SumExpEarned(ctx context.Context) (int, error)
 }
 
 type ExpService struct {
-	counter recordCounter
+	summer expSummer
 }
 
-func NewExpService(counter recordCounter) *ExpService {
-	return &ExpService{counter: counter}
+func NewExpService(summer expSummer) *ExpService {
+	return &ExpService{summer: summer}
 }
 
 type ExpResult struct {
@@ -24,15 +22,10 @@ type ExpResult struct {
 	Level    int
 }
 
-func (s *ExpService) Calculate(ctx context.Context, habits []model.Habit) (*ExpResult, error) {
-	counts, err := s.counter.CountByHabitID(ctx)
+func (s *ExpService) Calculate(ctx context.Context) (*ExpResult, error) {
+	totalExp, err := s.summer.SumExpEarned(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("count records: %w", err)
-	}
-
-	totalExp := 0
-	for _, h := range habits {
-		totalExp += counts[h.ID] * h.ExpPerDone
+		return nil, fmt.Errorf("sum exp earned: %w", err)
 	}
 
 	return &ExpResult{

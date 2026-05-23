@@ -51,12 +51,12 @@ func (s habitDoneServiceStub) DoneHabitIDs(ctx context.Context) (map[int64]bool,
 }
 
 type expServiceStub struct {
-	calculateFn func(ctx context.Context, habits []model.Habit) (*service.ExpResult, error)
+	calculateFn func(ctx context.Context) (*service.ExpResult, error)
 }
 
-func (s expServiceStub) Calculate(ctx context.Context, habits []model.Habit) (*service.ExpResult, error) {
+func (s expServiceStub) Calculate(ctx context.Context) (*service.ExpResult, error) {
 	if s.calculateFn != nil {
-		return s.calculateFn(ctx, habits)
+		return s.calculateFn(ctx)
 	}
 	return &service.ExpResult{Level: 1}, nil
 }
@@ -789,7 +789,7 @@ func TestGetDashboard_ShowsExpAndLevel(t *testing.T) {
 		},
 	}
 	expSvc := expServiceStub{
-		calculateFn: func(ctx context.Context, habits []model.Habit) (*service.ExpResult, error) {
+		calculateFn: func(ctx context.Context) (*service.ExpResult, error) {
 			return &service.ExpResult{
 				TotalExp: 200,
 				Level:    3,

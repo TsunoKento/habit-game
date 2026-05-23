@@ -60,28 +60,14 @@ func (r *DailyRecord) FindDatesByHabitID(ctx context.Context, habitID int64) ([]
 	return dates, nil
 }
 
-func (r *DailyRecord) CountByHabitID(ctx context.Context) (map[int64]int, error) {
-	rows, err := r.db.QueryContext(ctx, `
-		SELECT habit_id, COUNT(*) FROM daily_records GROUP BY habit_id
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("count by habit: %w", err)
+func (r *DailyRecord) SumExpEarned(ctx context.Context) (int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(exp_earned), 0) FROM daily_records
+	`).Scan(&total); err != nil {
+		return 0, fmt.Errorf("sum exp_earned: %w", err)
 	}
-	defer rows.Close()
-
-	counts := make(map[int64]int)
-	for rows.Next() {
-		var habitID int64
-		var count int
-		if err := rows.Scan(&habitID, &count); err != nil {
-			return nil, fmt.Errorf("scan count: %w", err)
-		}
-		counts[habitID] = count
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate counts: %w", err)
-	}
-	return counts, nil
+	return total, nil
 }
 
 func (r *DailyRecord) FindByDateRange(ctx context.Context, from, to string) (map[string]map[int64]bool, error) {
@@ -122,11 +108,27 @@ func (r *DailyRecord) DeleteByHabitAndDate(ctx context.Context, habitID int64, d
 }
 
 func (r *DailyRecord) Create(ctx context.Context, habitID int64, date string) error {
-	if _, err := r.db.ExecContext(ctx, `
-		INSERT OR IGNORE INTO daily_records (habit_id, date)
-		VALUES (?, ?)
-	`, habitID, date); err != nil {
+	result, err := r.db.ExecContext(ctx, `
+		INSERT OR IGNORE INTO daily_records (habit_id, date, exp_earned)
+		SELECT ?, ?, exp_per_done FROM habits WHERE id = ?
+	`, habitID, date, habitID)
+	if err != nil {
 		return fmt.Errorf("insert daily_records: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if affected == 0 {
+		var exists bool
+		if err := r.db.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM habits WHERE id = ?)`, habitID,
+		).Scan(&exists); err != nil {
+			return fmt.Errorf("check habit exists: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("habit %d not found", habitID)
+		}
 	}
 	return nil
 }
