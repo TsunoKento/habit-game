@@ -142,25 +142,22 @@ docker compose --profile dev down
 
 ### ポート番号のルール
 
-`APP_PORT = 8000 + issue番号` とする。
+`APP_PORT` は 8000 から順に探し、次のどちらにも当たらない最小のポートを使う。
 
-| issue 番号 | APP_PORT |
-|---|---|
-| 18 | 8018 |
-| 19 | 8019 |
-| 42 | 8042 |
+- このマシンで使用中（LISTEN 中）のポート
+- 他の worktree の `.env` で割り当て済みのポート（`.env` がない worktree はデフォルトの `8080` を使うため、`8080` も割り当て済みとして扱う）
 
 ### セットアップ手順
 
+`/issue` スキルを使うと、以下が自動で行われる。
+
+1. worktree（`../habit-game-issue-{N}`）とブランチ（`issue-{N}-{slug}`）を作成
+2. 上記ルールで空きポートを選び、worktree に `.env`（`APP_PORT=...`）を作成
+3. Claude Code のセッションを worktree に切り替え
+
+起動は worktree 内で行う。
+
 ```bash
-# 1. worktree を作成
-git worktree add ../habit-game-issue-{N} -b issue-{N}-{slug}
-
-# 2. worktree に移動して .env を作成（issue 番号から自動決定）
-cd ../habit-game-issue-{N}
-echo "APP_PORT=80{NN}" > .env
-
-# 3. 起動
 docker compose up -d
 ```
 
