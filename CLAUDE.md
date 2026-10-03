@@ -47,6 +47,18 @@ habit-game/
 
 ## 開発フロー
 
+### issue の進め方
+
+1 issue につき、以下のスキルを順に使う。
+
+1. `/issue` — issue を作成し、worktree・ブランチ・`.env` を用意して、セッションを worktree に切り替える
+2. `/implement {N}` — 達成基準を振る舞いに分解し、TDD で1つずつ実装する（サイクルごとに確認を挟む）
+3. `/review {N}` — `/code-review` と `/simplify` で修正し、達成基準を確認して issue にチェックを付ける
+4. `/commit` — Conventional Commits 形式でコミットする
+5. push・PR 作成 — `Closes #{N}` を付けて PR を作成する
+6. `/coderabbit` — CodeRabbit の指摘に対応する（修正は1件ずつ個別にコミット）
+7. `/post-merge` — マージ後、セッションを main に戻し、worktree とブランチを削除する
+
 ### TDD（テスト駆動開発）
 
 **Red → Green → Refactor** のサイクルで実装する。
